@@ -83,13 +83,9 @@ class MoveGroupPythonIntefaceTutorial(object):
                                                    queue_size=20)
 
     model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
-    pick_sub = rospy.Subscriber("/pick", String, self.pick)
+    # pick_sub = rospy.Subscriber("/pick", String, self.pick)
     rospy.Subscriber('/camera/object_track', PointStamped, self.obj_track)
 
-    ## END_SUB_TUTORIAL
-
-    ## BEGIN_SUB_TUTORIAL basic_info
-    ##
     ## Getting Basic Information
     ## ^^^^^^^^^^^^^^^^^^^^^^^^^
     # We can get the name of the reference frame for this robot:
@@ -125,28 +121,9 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.eef_link = eef_link
     self.group_names = group_names
     self.model_coordinates = model_coordinates
-    self.pick_sub = pick_sub
     self.sphere_img = []
     self.sphere_img_pt = PointStamped()
 
-  # def pick(self,msg):
-    
-  #   self.go_to_pose_goal(0.4, 0.0,0.7)
-  #   sphere_pose = self.model_coordinates(msg.data,"").pose
-
-  #   print "sphere at x: {}, y: {}".format(sphere_pose.position.x,sphere_pose.position.y)
-
-  #   self.add_box(sphere_pose.position.x,sphere_pose.position.y)
-
-  #   print "============ Cartesian path ..."
-
-  #   plan, fraction = self.plan_cartesian(sphere_pose)
-  #   self.display_trajectory(plan)
-
-  #   rospy.sleep(5)
-
-  #   self.execute_plan(plan)
-  #   self.go_to_pose_goal(sphere_pose.position.x,sphere_pose.position.y,0.1)
 
   def go_to_joint_state(self,joint_goal):
     move_group = self.move_group
@@ -163,13 +140,13 @@ class MoveGroupPythonIntefaceTutorial(object):
     return all_close(joint_goal, current_joints, 0.01)
 
 
-  def go_to_pose_goal(self,x,y,z):
+  def go_to_pose_goal(self,x,y,z,yaw=0):
     move_group = self.move_group
 
     #  Pose Orientation - Fixed
     roll_angle = 0
-    pitch_angle = 1.5708
-    yaw_angle = 0
+    pitch_angle = 1.57
+    yaw_angle = yaw
     quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw_angle)
 
     pose_goal = geometry_msgs.msg.Pose()
@@ -245,7 +222,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     current_pose = self.move_group.get_current_pose().pose
     return all_close(pose_goal, current_pose, 0.01)
 
-  def plan_goal(self,x=0.4,y=-0.1,z=0.8):
+  def plan_goal(self,x,y,z):
     move_group = self.move_group
 
     #  Pose Orientation
@@ -569,7 +546,9 @@ class MoveGroupPythonIntefaceTutorial(object):
 
 def main():
   zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
-  observe_goal = [-2.1619815111406817, -1.7340678392100362, -1.4741526587285696, -1.5043815523119646, 1.570222346611276, -0.5916732938893325]
+  # observe_goal = [-2.1619815111406817, -1.7340678392100362, -1.4741526587285696, -1.5043815523119646, 1.570222346611276, -0.5916732938893325]
+  observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.2754254250487067]
+
 
   # FLAGS
   ex_plan = 'y'
@@ -590,115 +569,78 @@ def main():
     tutorial.detach_box()
     tutorial.remove_box()
 
-    print "============ Press `Enter` to execute a movement using a joint state goal ..."
+    print "============ Press `Enter` to move to zero position (joint state goal) ..."
     raw_input()
     tutorial.go_to_joint_state(zero_goal)
 
-    #observe: (x=0.4,y=-0.1,z=0.8)
-    #pickup: (x=0.4,y=-0.1,z=0.4)
-    #place: (x=0.4,y=0.5,z=0.4)
+    observe_pose = (0.4, 0.0,0.7)
+    place_pose = (-0.1,0.4,0.3)
 
-    print "============ Press `Enter` to add a box to the planning scene ..."
-    raw_input()
+    print "============ adding bounding box to the planning scene ..."
     tutorial.add_bbox()
 
 
-    print "============ Press `Enter` to move to observe pose ..."
-    raw_input()
-    tutorial.go_to_pose_goal(0.4, 0.0,0.7)
-    
     if pick_only:
       while not rospy.is_shutdown():
-        print "============ Press `Enter` to move to observe pose ..."
+
+        tutorial.go_to_joint_state(observe_goal)
+
+        print "============ Press `Enter` to move to ball ..."
         raw_input()
-        tutorial.go_to_pose_goal(tutorial.sphere_img_pt.point.x, tutorial.sphere_img_pt.point.y,0.3)
+        tutorial.go_to_pose_goal(tutorial.sphere_img_pt.point.x, tutorial.sphere_img_pt.point.y,0.1,-0.50)
 
     else:
       # ------- pick ------ START
 
       while not rospy.is_shutdown():
 
-        print "============ Press `Enter` to move to observe pose ..."
-        raw_input()
-        tutorial.go_to_pose_goal(0.4, 0.0,0.7)
-
-        # print "============ Press `Enter` to move to observe joint state goal ..."
+        # print "============ Press `Enter` to move to observe pose ..."
         # raw_input()
-        # tutorial.go_to_joint_state(observe_goal)
+        # print "============ moving to observe pose ..."
+        # tutorial.go_to_pose_goal(0.4, 0.0,0.7)
 
-        #pick zone corners
-        min_x,max_x,min_y,max_y = 0.3, 0.7, -0.3, 0.3
+        tutorial.go_to_joint_state(observe_goal)
+
+        print "============ Press `Enter` to retrieve ball coordinates ..."
+        raw_input()
+        rospy.sleep(0.1)
 
         # actual sphere coordinates
         sphere_pose = tutorial.model_coordinates("cricket_ball","").pose
-        
-        print "============ Press `Enter` to retrieve ball coordinates ..."
-        raw_input()
 
-        # print(visual_pose)
-        # print "visual pose: "+ str(visual_pose)
-        print "(model state) sphere at x: {}, y: {}".format(sphere_pose.position.x,sphere_pose.position.y)
-        print "(visual) sphere at x: {}, y: {}".format(tutorial.sphere_img_pt.point.x,tutorial.sphere_img_pt.point.y)
+        print "(model state) sphere at x: {}, y: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z)
+        print "(visual) sphere at x: {}, y: {}".format(tutorial.sphere_img_pt.point.x,tutorial.sphere_img_pt.point.y,tutorial.sphere_img_pt.point.z)
 
         sphere_pose.position.x = tutorial.sphere_img_pt.point.x
         sphere_pose.position.y = tutorial.sphere_img_pt.point.y
 
-        print "============ Press `Enter` to add a box to pick zone ..."
-        raw_input()
+        print "============ adding a box to ball ..."
+
         tutorial.add_box(sphere_pose.position.x,sphere_pose.position.y)
-        # tutorial.add_box(sphere_img_x,sphere_img_y)
 
-        print "============ Press `Enter` to plan path to pick box ..."
-        raw_input()
-        plan = tutorial.plan_goal(sphere_pose.position.x,sphere_pose.position.y, 0.1)
-        # plan = tutorial.plan_goal(sphere_img_x,sphere_img_y, 0.1)
-
-        tutorial.display_trajectory(plan)
-
-        # print "============ Press `Enter` to plan and display a Cartesian path ..."
-        # raw_input()
-        # cartesian_plan, fraction = tutorial.plan_cartesian_path()
-
-        # print "============ Press `Enter` to display a saved trajectory (this will replay the Cartesian path)  ..."
-        # raw_input()
-        # tutorial.display_trajectory(cartesian_plan)
-
-        print "============ Cartesian path ..."
-        raw_input()
         plan, fraction = tutorial.plan_cartesian(sphere_pose)
         tutorial.display_trajectory(plan)
 
-        ex_plan = raw_input("============ Execute plan? (y/n) ============")
+        ex_plan = raw_input("============ Execute plan? (y/n) ============ \n")
         print(ex_plan)
-        tutorial.execute_plan(plan) if ex_plan=='y' else sys.exit(0)
+
+        # tutorial.execute_plan(plan) if ex_plan=='y' else sys.exit(0)
         tutorial.go_to_pose_goal(sphere_pose.position.x,sphere_pose.position.y,0.1)
 
-
-        # print "============ Press `Enter` to move to pick pose ..."
-        # raw_input()
-        # tutorial.go_to_pose_goal(box_x,box_y,0.1)
-
-        print "============ Press `Enter` to attach a Box to the Panda robot ..."
-        raw_input()
+        print "============ attaching Box to the robot ..."
         tutorial.attach_box()
 
-        print "============ Press `Enter` to move to place pose ..."
-        raw_input()
-        tutorial.go_to_pose_goal(-0.1,0.4,0.3)
+        print "============ moving to place pose ..."
+        tutorial.go_to_pose_goal(place_pose[0],place_pose[1],place_pose[2])
 
-
-        print "============ Press `Enter` to detach the box from the Panda robot ..."
-        raw_input()
+        print "============ detaching box from the robot ..."
         tutorial.detach_box()
 
-        print "============ Press `Enter` to remove the box from the planning scene ..."
-        raw_input()
+        print "============ removing the box from the planning scene ..."
         tutorial.remove_box()
 
         # ------- pick ------ END
 
-
-    print "============ Python tutorial demo complete!"
   except rospy.ROSInterruptException:
     return
   except KeyboardInterrupt:
@@ -711,8 +653,6 @@ if __name__ == '__main__':
   listener = tf.TransformListener()
   listener.waitForTransform("/base_link", "/camera_link", rospy.Time(0),rospy.Duration(4.0))
 
-  sphere_img_x = 0
-  sphere_img_y = 0
   visual_pose = PointStamped()
 
   main()
