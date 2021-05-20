@@ -555,7 +555,7 @@ def main():
         raw_input()
         rospy.sleep(0.1)
         print("obj angle: {}".format(tutorial.sphere_img_orien))
-        eef_orien = 1.57 - tutorial.sphere_img_orien
+        eef_orien = tutorial.sphere_img_orien - 1.5708
         tutorial.go_to_pose_goal(tutorial.sphere_img_pose.position.x, tutorial.sphere_img_pose.position.y,0.1,eef_orien)
 
         rospy.sleep(2.0)
