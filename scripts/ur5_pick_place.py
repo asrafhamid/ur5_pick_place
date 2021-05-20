@@ -13,10 +13,10 @@ from math import pi
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 from moveit_msgs.msg import Constraints, JointConstraint, OrientationConstraint
-from tf.transformations import quaternion_from_euler
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import random
 from gazebo_msgs.srv import GetModelState
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PointStamped, PoseStamped
 import tf
 ## END_SUB_TUTORIAL
 
@@ -52,10 +52,6 @@ class MoveGroupPythonIntefaceTutorial(object):
   def __init__(self):
     super(MoveGroupPythonIntefaceTutorial, self).__init__()
     
-
-    ## BEGIN_SUB_TUTORIAL setup
-    ##
-    ## First initialize `moveit_commander`_ and a `rospy`_ node:
     moveit_commander.roscpp_initialize(sys.argv)
 
     ## Instantiate a `RobotCommander`_ object. Provides information such as the robot's
@@ -76,15 +72,12 @@ class MoveGroupPythonIntefaceTutorial(object):
     group_name = "manipulator"
     move_group = moveit_commander.MoveGroupCommander(group_name)
 
-    ## Create a `DisplayTrajectory`_ ROS publisher which is used to display
-    ## trajectories in Rviz:
     display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                    moveit_msgs.msg.DisplayTrajectory,
                                                    queue_size=20)
 
     model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
-    # pick_sub = rospy.Subscriber("/pick", String, self.pick)
-    rospy.Subscriber('/camera/object_track', PointStamped, self.obj_track)
+    rospy.Subscriber('/camera/object_track', PoseStamped, self.obj_track)
 
     ## Getting Basic Information
     ## ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +115,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.group_names = group_names
     self.model_coordinates = model_coordinates
     self.sphere_img = []
-    self.sphere_img_pt = PointStamped()
+    self.sphere_img_pose = PoseStamped().pose
 
 
   def go_to_joint_state(self,joint_goal):
@@ -130,10 +123,8 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     move_group.go(joint_goal, wait=True)
     
-    # Calling ``stop()`` ensures that there is no residual movement
+    # ensure no residual movement
     move_group.stop()
-
-    ## END_SUB_TUTORIAL
 
     # For testing:
     current_joints = move_group.get_current_joint_values()
@@ -188,13 +179,6 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     move_group.set_path_constraints(self.constraints)
 
-    
-    ## BEGIN_SUB_TUTORIAL plan_to_pose
-    ##
-    ## Planning to a Pose Goal
-    ## ^^^^^^^^^^^^^^^^^^^^^^^
-    ## We can plan a motion for this group to a desired pose for the
-    ## end-effector:
     pose_goal = geometry_msgs.msg.Pose()
     pose_goal.orientation.w = 1.0
     
@@ -210,8 +194,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     plan = move_group.go(wait=True)
     # Calling `stop()` ensures that there is no residual movement
     move_group.stop()
-    # It is always good to clear your targets after planning with poses.
-    # Note: there is no equivalent function for clear_joint_value_targets()
+    
     move_group.clear_path_constraints()
 
     ## END_SUB_TUTORIAL
@@ -293,14 +276,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     # reason not to.
     move_group = self.move_group
 
-    ## BEGIN_SUB_TUTORIAL plan_cartesian_path
-    ##
-    ## Cartesian Paths
-    ## ^^^^^^^^^^^^^^^
-    ## You can plan a Cartesian path directly by specifying a list of waypoints
-    ## for the end-effector to go through. If executing  interactively in a
-    ## Python shell, set scale = 1.0.
-    ##
     waypoints = []
 
     wpose = move_group.get_current_pose().pose
@@ -327,13 +302,8 @@ class MoveGroupPythonIntefaceTutorial(object):
     # Note: We are just planning, not asking move_group to actually move the robot yet:
     return plan, fraction
 
-    ## END_SUB_TUTORIAL
-
-
   def display_trajectory(self, plan):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
+    
     robot = self.robot
     display_trajectory_publisher = self.display_trajectory_publisher
 
@@ -538,15 +508,19 @@ class MoveGroupPythonIntefaceTutorial(object):
       # print(msg)
       try:
         msg.header.frame_id = "camera_depth_optical_frame"
-        p=listener.transformPoint("base_link",msg)
+        p=listener.transformPose("base_link",msg)
       except tf.TransformException as e:
         print(type(e))
       
-      self.sphere_img_pt = p
+      # print(p)
+      self.sphere_img_pose = p.pose
+      # euler = tf.transformations.euler_from_quaternion(self.sphere_img_pose.orientation)
+      # print("obj angle: {}".format(self.sphere_img_pose.orientation.w))
+      self.sphere_img_orien = msg.pose.orientation.w
+
 
 def main():
   zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
-  # observe_goal = [-2.1619815111406817, -1.7340678392100362, -1.4741526587285696, -1.5043815523119646, 1.570222346611276, -0.5916732938893325]
   observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.2754254250487067]
 
 
@@ -556,16 +530,8 @@ def main():
 
 
   try:
-    print ""
-    print "----------------------------------------------------------"
-    print "Welcome to the MoveIt MoveGroup Python Interface Tutorial"
-    print "----------------------------------------------------------"
-    print "Press Ctrl-D to exit at any time"
-    print ""
-    print "============ Press `Enter` to begin the tutorial by setting up the moveit_commander ..."
-    raw_input()
-    tutorial = MoveGroupPythonIntefaceTutorial()
 
+    tutorial = MoveGroupPythonIntefaceTutorial()
     tutorial.detach_box()
     tutorial.remove_box()
 
@@ -587,7 +553,12 @@ def main():
 
         print "============ Press `Enter` to move to ball ..."
         raw_input()
-        tutorial.go_to_pose_goal(tutorial.sphere_img_pt.point.x, tutorial.sphere_img_pt.point.y,0.1,-0.50)
+        rospy.sleep(0.1)
+        print("obj angle: {}".format(tutorial.sphere_img_orien))
+        eef_orien = 1.57 - tutorial.sphere_img_orien
+        tutorial.go_to_pose_goal(tutorial.sphere_img_pose.position.x, tutorial.sphere_img_pose.position.y,0.1,eef_orien)
+
+        rospy.sleep(2.0)
 
     else:
       # ------- pick ------ START
@@ -608,11 +579,13 @@ def main():
         # actual sphere coordinates
         sphere_pose = tutorial.model_coordinates("cricket_ball","").pose
 
-        print "(model state) sphere at x: {}, y: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z)
-        print "(visual) sphere at x: {}, y: {}".format(tutorial.sphere_img_pt.point.x,tutorial.sphere_img_pt.point.y,tutorial.sphere_img_pt.point.z)
+        print "(model state) sphere at x: {}, y: {}, z: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z)
+        print "(visual) sphere at x: {}, y: {}, z: {}".format(tutorial.sphere_img_pose.position.x,tutorial.sphere_img_pose.position.y,tutorial.sphere_img_pose.position.z)
 
-        sphere_pose.position.x = tutorial.sphere_img_pt.point.x
-        sphere_pose.position.y = tutorial.sphere_img_pt.point.y
+        print("obj angle: {}".format(tutorial.sphere_img_pose.orientation.w))
+
+        sphere_pose.position.x = tutorial.sphere_img_pose.position.x
+        sphere_pose.position.y = tutorial.sphere_img_pose.position.y
 
         print "============ adding a box to ball ..."
 
@@ -652,8 +625,6 @@ if __name__ == '__main__':
 
   listener = tf.TransformListener()
   listener.waitForTransform("/base_link", "/camera_link", rospy.Time(0),rospy.Duration(4.0))
-
-  visual_pose = PointStamped()
 
   main()
   rospy.spin()
