@@ -27,6 +27,7 @@ This is research code, expect that it changes often and any fitness for a partic
 - [Robot Operating System (ROS)](http://wiki.ros.org) (middleware for robotics),
 - [Universal Robot](https://github.com/ros-industrial/universal_robot) (ROS-Industrial Universal Robot meta-package)
 - [Obj Detection](https://github.com/aychaplin/ur5_pick_place) (opencv ros-wrapper for object tracking)
+- [Realsense Gazebo plugin](https://github.com/pal-robotics/realsense_gazebo_plugin) (Gazebo ROS plugin for the Intel D435 realsense camera)
 
 
 #### Building
