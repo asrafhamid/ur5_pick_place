@@ -90,7 +90,7 @@ Reads object pose, picks up object and place at defined postion.
 
 ## Bugs & Feature Requests
 
-Please report bugs and request features using the [Issue Tracker](https://github.com/ethz-asl/ros_best_practices/issues).
+Please report bugs and request features using the [Issue Tracker](https://github.com/aychaplin/ur5_pick_place/issues).
 
 [ROS]: http://www.ros.org
 [rviz]: http://wiki.ros.org/rviz
