@@ -12,6 +12,8 @@ UR5 simulation performing pick and pick operation. Script adapted from move_grou
 **Author: Mohd Asraf <br />
 
 The ur5_pick_place package has been tested under [ROS] Melodic on Ubuntu 18.04.
+
+#TODO: ??? \
 This is research code, expect that it changes often and any fitness for a particular purpose is disclaimed.
 
 
@@ -42,6 +44,7 @@ To build from source, clone the latest version from this repository into your ca
 
 Source gazebo model
 
+	#TODO: ???
 	source gazebo model
 	export GAZEBO_MODEL_PATH="$GAZEBO_MODEL_PATH:/usr/share/gazebo-9/models:[your_workspace_directory]/src/ur5_pick_place/models"
 
@@ -92,6 +95,7 @@ Reads object pose, picks up object and place at defined postion.
 
 Please report bugs and request features using the [Issue Tracker](https://github.com/aychaplin/ur5_pick_place/issues).
 
+#TODO: ??? \
 [ROS]: http://www.ros.org
 [rviz]: http://wiki.ros.org/rviz
 [geometry_msgs/PoseStamped]: http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/PoseStamped.html
