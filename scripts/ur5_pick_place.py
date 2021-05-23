@@ -43,6 +43,7 @@ def all_close(goal, actual, tolerance):
 
   return True
 
+#TODO: 
 class Fruit:
   def __init__(self,name):
     self._name = name
@@ -83,25 +84,25 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## ^^^^^^^^^^^^^^^^^^^^^^^^^
     # We can get the name of the reference frame for this robot:
     planning_frame = move_group.get_planning_frame()
-    print "============ Planning frame: %s" % planning_frame
+    print("============ Planning frame: %s" % planning_frame)
 
     # We can also print the name of the end-effector link for this group:
     eef_link = move_group.get_end_effector_link()
-    print "============ End effector link: %s" % eef_link
+    print("============ End effector link: %s" % eef_link)
 
     # We can get a list of all the groups in the robot:
     group_names = robot.get_group_names()
-    print "============ Available Planning Groups:", robot.get_group_names()
+    print("============ Available Planning Groups:", robot.get_group_names())
 
     # Sometimes for debugging it is useful to print the entire state of the
     # robot:
-    print "============ Printing robot state"
-    print robot.get_current_state()
+    print("============ Printing robot state")
+    print(robot.get_current_state())
 
-    print "============ Printing robot state"
+    print("============ Printing robot state")
     current_pose = move_group.get_current_pose(eef_link).pose
-    print current_pose
-    print ""
+    print(current_pose)
+    print("")
     ## END_SUB_TUTORIAL
 
     # Misc variables
@@ -117,6 +118,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.sphere_img = []
     self.sphere_img_pose = PoseStamped().pose
 
+    self.sphere_img_orien = 0
 
   def go_to_joint_state(self,joint_goal):
     move_group = self.move_group
@@ -535,14 +537,14 @@ def main():
     tutorial.detach_box()
     tutorial.remove_box()
 
-    print "============ Press `Enter` to move to zero position (joint state goal) ..."
-    raw_input()
+    print("============ Press `Enter` to move to zero position (joint state goal) ...")
+    input()
     tutorial.go_to_joint_state(zero_goal)
 
     observe_pose = (0.4, 0.0,0.7)
     place_pose = (-0.1,0.4,0.3)
 
-    print "============ adding bounding box to the planning scene ..."
+    print("============ adding bounding box to the planning scene ...")
     tutorial.add_bbox()
 
 
@@ -551,8 +553,8 @@ def main():
 
         tutorial.go_to_joint_state(observe_goal)
 
-        print "============ Press `Enter` to move to ball ..."
-        raw_input()
+        print("============ Press `Enter` to move to ball ...")
+        input()
         rospy.sleep(0.1)
         print("obj angle: {}".format(tutorial.sphere_img_orien))
         eef_orien = tutorial.sphere_img_orien - 1.5708
@@ -565,51 +567,51 @@ def main():
 
       while not rospy.is_shutdown():
 
-        # print "============ Press `Enter` to move to observe pose ..."
-        # raw_input()
-        # print "============ moving to observe pose ..."
+        # print("============ Press `Enter` to move to observe pose ..."
+        # input()
+        # print("============ moving to observe pose ..."
         # tutorial.go_to_pose_goal(0.4, 0.0,0.7)
 
         tutorial.go_to_joint_state(observe_goal)
 
-        print "============ Press `Enter` to retrieve ball coordinates ..."
-        raw_input()
+        print("============ Press `Enter` to retrieve ball coordinates ...")
+        input()
         rospy.sleep(0.1)
 
         # actual sphere coordinates
         sphere_pose = tutorial.model_coordinates("cricket_ball","").pose
 
-        print "(model state) sphere at x: {}, y: {}, z: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z)
-        print "(visual) sphere at x: {}, y: {}, z: {}".format(tutorial.sphere_img_pose.position.x,tutorial.sphere_img_pose.position.y,tutorial.sphere_img_pose.position.z)
+        print("(model state) sphere at x: {}, y: {}, z: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z))
+        print("(visual) sphere at x: {}, y: {}, z: {}".format(tutorial.sphere_img_pose.position.x,tutorial.sphere_img_pose.position.y,tutorial.sphere_img_pose.position.z))
 
         print("obj angle: {}".format(tutorial.sphere_img_pose.orientation.w))
 
         sphere_pose.position.x = tutorial.sphere_img_pose.position.x
         sphere_pose.position.y = tutorial.sphere_img_pose.position.y
 
-        print "============ adding a box to ball ..."
+        print("============ adding a box to ball ...")
 
         tutorial.add_box(sphere_pose.position.x,sphere_pose.position.y)
 
         plan, fraction = tutorial.plan_cartesian(sphere_pose)
         tutorial.display_trajectory(plan)
 
-        ex_plan = raw_input("============ Execute plan? (y/n) ============ \n")
+        ex_plan = input("============ Execute plan? (y/n) ============ \n")
         print(ex_plan)
 
         # tutorial.execute_plan(plan) if ex_plan=='y' else sys.exit(0)
         tutorial.go_to_pose_goal(sphere_pose.position.x,sphere_pose.position.y,0.1)
 
-        print "============ attaching Box to the robot ..."
+        print("============ attaching Box to the robot ...")
         tutorial.attach_box()
 
-        print "============ moving to place pose ..."
+        print("============ moving to place pose ...")
         tutorial.go_to_pose_goal(place_pose[0],place_pose[1],place_pose[2])
 
-        print "============ detaching box from the robot ..."
+        print("============ detaching box from the robot ...")
         tutorial.detach_box()
 
-        print "============ removing the box from the planning scene ..."
+        print("============ removing the box from the planning scene ...")
         tutorial.remove_box()
 
         # ------- pick ------ END
