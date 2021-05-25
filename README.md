@@ -3,7 +3,7 @@
 ## Overview
 
 UR5 simulation performing pick and pick operation. Script adapted from move_group_python_interface tutorial. 
-- Reads in object pose from [Obj Detection](https://github.com/aychaplin/ur5_pick_place)
+- Reads in object pose from [Obj Detection](https://github.com/aychaplin/obj_detection)
 - Pick and place operation using moveit interface [Move Group Python](http://docs.ros.org/en/melodic/api/moveit_tutorials/html/doc/move_group_python_interface/move_group_python_interface_tutorial.html)
 
 **Keywords:** universal robot, pick and place, ur5, moveit
@@ -11,10 +11,8 @@ UR5 simulation performing pick and pick operation. Script adapted from move_grou
 
 **Author: Mohd Asraf <br />
 
-The ur5_pick_place package has been tested under [ROS] Melodic on Ubuntu 18.04.
+The ur5_pick_place package has been tested under [ROS] Melodic, Noetic on Ubuntu 18.04 and Ubuntu 20.04 respectively.
 
-#TODO: ??? \
-This is research code, expect that it changes often and any fitness for a particular purpose is disclaimed.
 
 
 ![Example image](doc/example.jpg)
@@ -28,11 +26,15 @@ This is research code, expect that it changes often and any fitness for a partic
 
 - [Robot Operating System (ROS)](http://wiki.ros.org) (middleware for robotics),
 - [Universal Robot](https://github.com/ros-industrial/universal_robot) (ROS-Industrial Universal Robot meta-package)
-- [Obj Detection](https://github.com/aychaplin/ur5_pick_place) (opencv ros-wrapper for object tracking)
+- [Obj Detection](https://github.com/aychaplin/obj_detection) (opencv ros-wrapper for object tracking)
 - [Realsense Gazebo plugin](https://github.com/pal-robotics/realsense_gazebo_plugin) (Gazebo ROS plugin for the Intel D435 realsense camera)
 
 
 #### Building
+
+Source gazebo model path, easier to add to .bashrc
+
+	export GAZEBO_MODEL_PATH="$GAZEBO_MODEL_PATH:/usr/share/gazebo-9/models:[your_workspace_directory]/src/ur5_pick_place/models"
 
 To build from source, clone the latest version from this repository into your catkin workspace and compile the package using
 
@@ -42,11 +44,6 @@ To build from source, clone the latest version from this repository into your ca
 	rosdep install --from-paths . --ignore-src
 	catkin_make
 
-Source gazebo model
-
-	#TODO: ???
-	source gazebo model
-	export GAZEBO_MODEL_PATH="$GAZEBO_MODEL_PATH:/usr/share/gazebo-9/models:[your_workspace_directory]/src/ur5_pick_place/models"
 
 ## Usage
 
@@ -62,6 +59,10 @@ For setting up the MoveIt! nodes to allow motion planning run:
 For starting up RViz with a configuration including the MoveIt! Motion Planning plugin run:
 
 	roslaunch ur5_moveit_config moveit_rviz.launch config:=true
+	
+To start the above 3 in one launch (gazebo simulation, MoveIt! node and MoveIt! Motion Planning plugin):
+
+	roslaunch ur5_pick_place ur5_pick_place.launch
   
 Run pick_place node with:
 
@@ -71,6 +72,11 @@ Run pick_place node with:
 ## Launch files
 
 * **ur5.launch:** simulation with gazebo
+
+     - **`limited`** limits joint range [-PI, PI] on all joints. Default: `true`.
+     - **`gui`** Starts gazebo gui. Default: `true`.
+
+* **ur5_pick_place.launch:** simulation with gazebo
 
      - **`limited`** limits joint range [-PI, PI] on all joints. Default: `true`.
      - **`gui`** Starts gazebo gui. Default: `true`.
@@ -95,7 +101,5 @@ Reads object pose, picks up object and place at defined postion.
 
 Please report bugs and request features using the [Issue Tracker](https://github.com/aychaplin/ur5_pick_place/issues).
 
-#TODO: ??? \
 [ROS]: http://www.ros.org
-[rviz]: http://wiki.ros.org/rviz
 [geometry_msgs/PoseStamped]: http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/PoseStamped.html
