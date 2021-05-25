@@ -52,11 +52,11 @@
       </geometry>
       <material name="orange"/>
     </visual>
-    <collision>
+    <!-- <collision>
       <geometry>
         <mesh filename="package://robotiq_description/meshes/robotiq_85_coupler.stl" />
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <origin xyz="2.073e-05   1.45286e-03  -1.1049e-03" rpy="0 0 0" />
       <mass value="0.168" />
@@ -95,7 +95,7 @@
   </gazebo>
   
   <!-- Gazebo grasping plugin -->
-  <gazebo>
+  <!-- <gazebo>
     <gripper name="gazebo_gripper">
       <grasp_check>
         <attach_steps>2</attach_steps>    
@@ -106,6 +106,6 @@
       <gripper_link>robotiq_85_right_finger_tip_link</gripper_link>
       <palm_link>robotiq_85_base_link</palm_link>
     </gripper>
-  </gazebo>
+  </gazebo> -->
   
 </robot>
