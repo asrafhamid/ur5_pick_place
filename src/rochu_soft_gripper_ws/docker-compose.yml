@@ -1,0 +1,13 @@
+version: "3.7"
+services:
+    rochu_soft_gripper:
+        image: rochu_soft_gripper
+        container_name: rochu_soft_gripper
+        hostname: rochu_soft_gripper
+        net: rosdocker                                      ????
+        environment:
+            - "ROS_HOSTNAME=talker"                         ????
+            - "ROS_MASTER_URI=http://rosmaster:11311"       ????
+        command: sh -c "yarn install && yarn run dev"
+        volumes:
+            - ./:/app
