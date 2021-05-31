@@ -541,7 +541,7 @@ def main():
     tutorial.remove_box()
 
     print("============ Press `Enter` to move to zero position (joint state goal) ...")
-    raw_input()
+    input()
     tutorial.go_to_joint_state(zero_goal)
 
     observe_pose = (0.4, 0.0,0.7)
@@ -561,7 +561,7 @@ def main():
         tutorial.go_to_joint_state(observe_goal)
 
         print("============ Press `Enter` to move to ball ...")
-        raw_input()
+        input()
         rospy.sleep(0.1)
         sphere_pose = tutorial.model_coordinates("cricket_ball","").pose
 
@@ -589,7 +589,7 @@ def main():
         tutorial.go_to_joint_state(observe_goal)
 
         print("============ Press `Enter` to retrieve ball coordinates ...")
-        raw_input()
+        input()
         rospy.sleep(0.1)
 
         # actual sphere coordinates
@@ -610,7 +610,7 @@ def main():
         plan, fraction = tutorial.plan_cartesian(sphere_pose)
         tutorial.display_trajectory(plan)
 
-        ex_plan = raw_input("============ Execute plan? (y/n) ============ \n")
+        ex_plan = input("============ Execute plan? (y/n) ============ \n")
         print(ex_plan)
 
         # tutorial.execute_plan(plan) if ex_plan=='y' else sys.exit(0)
