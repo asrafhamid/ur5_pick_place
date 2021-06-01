@@ -1,0 +1,4 @@
+string color
+-----------------------
+bool success
+geometry_msgs/PoseArray poses

@@ -18,7 +18,7 @@ import random
 from gazebo_msgs.srv import GetModelState
 from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
 import tf
-from obj_detection.srv import GetObject
+from ur5_pick_place.srv import GetObject
 ## END_SUB_TUTORIAL
 
 
