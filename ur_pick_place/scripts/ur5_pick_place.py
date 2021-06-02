@@ -18,7 +18,9 @@ import random
 from gazebo_msgs.srv import GetModelState
 from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
 import tf
-from ur5_pick_place.srv import GetObject
+from obj_detection.srv import GetObject
+from six.moves import input
+
 ## END_SUB_TUTORIAL
 
 
@@ -79,7 +81,7 @@ class MoveGroupPythonIntefaceTutorial(object):
                                                    queue_size=20)
 
     model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
-    rospy.Subscriber('/camera/object_track', PoseStamped, self.obj_track)
+    # rospy.Subscriber('/camera/object_track', PoseStamped, self.obj_track)
 
 
 
@@ -523,6 +525,23 @@ class MoveGroupPythonIntefaceTutorial(object):
       # print("obj angle: {}".format(self.sphere_img_pose.orientation.w))
       self.sphere_img_orien = msg.pose.orientation.w
 
+  def transf_pose_arr(self,pose_arr):
+    tf_pose_array = []
+    pose = PoseStamped()
+    # pose.header = pose_arr.header
+    pose.header.frame_id = "camera_depth_optical_frame"
+
+    for p in pose_arr.poses:
+      pose.pose = p
+      tf_pose = listener.transformPose("base_link",pose)
+      tf_pose.pose.orientation.w = p.orientation.w 
+      tf_pose_array.append(tf_pose.pose)
+
+    print(tf_pose_array)
+    return tf_pose_array
+
+
+
 
 def main():
   zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
@@ -550,6 +569,9 @@ def main():
     print("============ adding bounding box to the planning scene ...")
     tutorial.add_bbox()
 
+    tutorial.go_to_joint_state(observe_goal)
+
+    print("============ waiting for obj detect service ...")
     rospy.wait_for_service('/get_obj_clr')
     obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
     pose = Pose()
@@ -563,16 +585,24 @@ def main():
         print("============ Press `Enter` to move to ball ...")
         input()
         rospy.sleep(0.1)
-        sphere_pose = tutorial.model_coordinates("cricket_ball","").pose
+        # sphere_pose = tutorial.model_coordinates("cricket_ball","").pose
 
-        pose = obj_srv("red")
-        print(pose)
+        pose = obj_srv("blue")
+        print(pose.poses.poses)
 
-        print("(model state) sphere at x: {}, y: {}, z: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z))
-        print("(visual) sphere at x: {}, y: {}, z: {}".format(tutorial.sphere_img_pose.position.x,tutorial.sphere_img_pose.position.y,tutorial.sphere_img_pose.position.z))
-        print("obj angle: {}".format(tutorial.sphere_img_orien))
-        eef_orien = tutorial.sphere_img_orien - 1.5708
-        tutorial.go_to_pose_goal(tutorial.sphere_img_pose.position.x, tutorial.sphere_img_pose.position.y,0.2,eef_orien)
+        if pose.poses.poses:
+          pose_tf = tutorial.transf_pose_arr(pose.poses)
+
+          for p in pose_tf:
+            tutorial.go_to_pose_goal(p.position.x, p.position.y,0.18,p.orientation.w-1.5708)
+            rospy.sleep(2.0)
+
+        # print("(model state) sphere at x: {}, y: {}, z: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z))
+        # print("(visual) sphere at x: {}, y: {}, z: {}".format(tutorial.sphere_img_pose.position.x,tutorial.sphere_img_pose.position.y,tutorial.sphere_img_pose.position.z))
+        # print("obj angle: {}".format(tutorial.sphere_img_orien))
+        # eef_orien = tutorial.sphere_img_orien - 1.5708
+
+        # tutorial.go_to_pose_goal(tutorial.sphere_img_pose.position.x, tutorial.sphere_img_pose.position.y,0.2,eef_orien)
 
         rospy.sleep(2.0)
 
