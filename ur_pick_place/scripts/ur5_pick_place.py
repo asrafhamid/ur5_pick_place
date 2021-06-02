@@ -19,7 +19,8 @@ from gazebo_msgs.srv import GetModelState
 from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
 import tf
 from obj_detection.srv import GetObject
-from six.moves import input
+# from six.moves import input
+from builtins import input
 
 ## END_SUB_TUTORIAL
 
