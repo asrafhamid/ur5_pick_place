@@ -68,6 +68,8 @@ Run pick_place node with:
 
 	rosrun ur5_pick_place ur5_pick_place.py
 
+Pick up the **red** coloured object by:
+```rostopic pub object_colour std_msgs/String "data: 'blue'" ```
 
 ## Launch files
 

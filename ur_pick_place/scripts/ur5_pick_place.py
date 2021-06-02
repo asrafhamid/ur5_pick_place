@@ -541,130 +541,25 @@ class MoveGroupPythonIntefaceTutorial(object):
     print(tf_pose_array)
     return tf_pose_array
 
-
-
-
-def main():
-  zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
-  observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.2754254250487067]
-
-
-  # FLAGS
-  ex_plan = 'y'
-  pick_only = True
-
-
+def trigger_pick_and_place(data):
+  print("-------- Started --------")
   try:
+    pose = obj_srv(data.data)
+    print(pose.poses.poses)
 
-    tutorial = MoveGroupPythonIntefaceTutorial()
-    tutorial.detach_box()
-    tutorial.remove_box()
+    if pose.poses.poses:
+      pose_tf = tutorial.transf_pose_arr(pose.poses)
 
-    print("============ Press `Enter` to move to zero position (joint state goal) ...")
-    input()
-    tutorial.go_to_joint_state(zero_goal)
-
-    observe_pose = (0.4, 0.0,0.7)
-    place_pose = (-0.1,0.4,0.3)
-
-    print("============ adding bounding box to the planning scene ...")
-    tutorial.add_bbox()
-
-    tutorial.go_to_joint_state(observe_goal)
-
-    print("============ waiting for obj detect service ...")
-    rospy.wait_for_service('/get_obj_clr')
-    obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
-    pose = Pose()
-
-
-    if pick_only:
-      while not rospy.is_shutdown():
-
-        tutorial.go_to_joint_state(observe_goal)
-
-        print("============ Press `Enter` to move to ball ...")
-        input()
-        rospy.sleep(0.1)
-        # sphere_pose = tutorial.model_coordinates("cricket_ball","").pose
-
-        pose = obj_srv("blue")
-        print(pose.poses.poses)
-
-        if pose.poses.poses:
-          pose_tf = tutorial.transf_pose_arr(pose.poses)
-
-          for p in pose_tf:
-            tutorial.go_to_pose_goal(p.position.x, p.position.y,0.18,p.orientation.w-1.5708)
-            rospy.sleep(2.0)
-
-        # print("(model state) sphere at x: {}, y: {}, z: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z))
-        # print("(visual) sphere at x: {}, y: {}, z: {}".format(tutorial.sphere_img_pose.position.x,tutorial.sphere_img_pose.position.y,tutorial.sphere_img_pose.position.z))
-        # print("obj angle: {}".format(tutorial.sphere_img_orien))
-        # eef_orien = tutorial.sphere_img_orien - 1.5708
-
-        # tutorial.go_to_pose_goal(tutorial.sphere_img_pose.position.x, tutorial.sphere_img_pose.position.y,0.2,eef_orien)
-
+      for p in pose_tf:
+        tutorial.go_to_pose_goal(p.position.x, p.position.y,0.18,p.orientation.w-1.5708)
         rospy.sleep(2.0)
+      tutorial.go_to_joint_state(observe_goal)
 
-    else:
-      # ------- pick ------ START
+    print("-------- Finished --------")
+    rospy.sleep(2.0)
+  except Exception as e:
+    print(e)
 
-      while not rospy.is_shutdown():
-
-        # print("============ Press `Enter` to move to observe pose ..."
-        # input()
-        # print("============ moving to observe pose ..."
-        # tutorial.go_to_pose_goal(0.4, 0.0,0.7)
-
-        tutorial.go_to_joint_state(observe_goal)
-
-        print("============ Press `Enter` to retrieve ball coordinates ...")
-        input()
-        rospy.sleep(0.1)
-
-        # actual sphere coordinates
-        sphere_pose = tutorial.model_coordinates("cricket_ball","").pose
-
-        print("(model state) sphere at x: {}, y: {}, z: {}".format(sphere_pose.position.x,sphere_pose.position.y,sphere_pose.position.z))
-        print("(visual) sphere at x: {}, y: {}, z: {}".format(tutorial.sphere_img_pose.position.x,tutorial.sphere_img_pose.position.y,tutorial.sphere_img_pose.position.z))
-
-        print("obj angle: {}".format(tutorial.sphere_img_pose.orientation.w))
-
-        sphere_pose.position.x = tutorial.sphere_img_pose.position.x
-        sphere_pose.position.y = tutorial.sphere_img_pose.position.y
-
-        print("============ adding a box to ball ...")
-
-        tutorial.add_box(sphere_pose.position.x,sphere_pose.position.y)
-
-        plan, fraction = tutorial.plan_cartesian(sphere_pose)
-        tutorial.display_trajectory(plan)
-
-        ex_plan = input("============ Execute plan? (y/n) ============ \n")
-        print(ex_plan)
-
-        # tutorial.execute_plan(plan) if ex_plan=='y' else sys.exit(0)
-        tutorial.go_to_pose_goal(sphere_pose.position.x,sphere_pose.position.y,0.1)
-
-        print("============ attaching Box to the robot ...")
-        tutorial.attach_box()
-
-        print("============ moving to place pose ...")
-        tutorial.go_to_pose_goal(place_pose[0],place_pose[1],place_pose[2])
-
-        print("============ detaching box from the robot ...")
-        tutorial.detach_box()
-
-        print("============ removing the box from the planning scene ...")
-        tutorial.remove_box()
-
-        # ------- pick ------ END
-
-  except rospy.ROSInterruptException:
-    return
-  except KeyboardInterrupt:
-    return
 
 if __name__ == '__main__':
 
@@ -673,7 +568,36 @@ if __name__ == '__main__':
   listener = tf.TransformListener()
   listener.waitForTransform("/base_link", "/camera_link", rospy.Time(0),rospy.Duration(4.0))
 
-  main()
-  rospy.spin()
+  # TODO: move into class
+  # Initialization
+  zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
+  observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.2754254250487067]
 
+  tutorial = MoveGroupPythonIntefaceTutorial()
+  tutorial.detach_box()
+  tutorial.remove_box()
 
+  print("============ Press `Enter` to move to zero position (joint state goal) ...")
+  input()
+  tutorial.go_to_joint_state(zero_goal)
+
+  print("============ adding bounding box to the planning scene ...")
+  tutorial.add_bbox()
+
+  tutorial.go_to_joint_state(observe_goal)
+
+  print("============ waiting for obj detect service ...")
+  rospy.wait_for_service('/get_obj_clr')
+  obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
+
+  rospy.Subscriber("object_colour", String, trigger_pick_and_place)
+
+  print("Ready to perform pick and place.")
+
+  while not rospy.is_shutdown():
+    try:
+      rospy.spin()
+    except rospy.ROSInterruptException:
+      exit()
+    except KeyboardInterrupt:
+      exit()
