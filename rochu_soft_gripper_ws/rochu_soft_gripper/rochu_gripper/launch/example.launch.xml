@@ -1,0 +1,8 @@
+<?xml version='1.0' ?>
+
+<launch>
+<node pkg="rochu_gripper" exec="rochu_gripper_node" name="rochu_gripper_node" output="both">
+   <param from="$(find-pkg-share rochu_gripper)/params.yaml"/>
+</node>
+</launch>
+

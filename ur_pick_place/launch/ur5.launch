@@ -16,6 +16,8 @@
     <arg name="world_name" value="$(find ur5_pick_place)/worlds/demo.world"/>
     <arg name="paused" value="$(arg paused)"/>
     <arg name="gui" value="$(arg gui)"/>
+    <env name="GAZEBO_MODEL_PATH" value="$(find ur5_pick_place)/models"/>
+    <env name="GAZEBO_RESOURCE_PATH" value="$(find ur5_pick_place)"/>
   </include>
 
   <!-- send robot urdf to param server -->
