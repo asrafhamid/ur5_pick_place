@@ -14,13 +14,7 @@ UR5 simulation performing pick and pick operation. Script adapted from move_grou
 The ur5_pick_place package has been tested under [ROS] Melodic, Noetic on Ubuntu 18.04 and Ubuntu 20.04 respectively.
 
 
-
 ![Example image](doc/example.jpg)
-
-
-## Installation
-
-### Building from Source
 
 #### Dependencies
 
@@ -30,46 +24,46 @@ The ur5_pick_place package has been tested under [ROS] Melodic, Noetic on Ubuntu
 - [Realsense Gazebo plugin](https://github.com/pal-robotics/realsense_gazebo_plugin) (Gazebo ROS plugin for the Intel D435 realsense camera)
 
 
-#### Building
+#### Building/Installation
 
-Source gazebo model path, easier to add to .bashrc
-
-	export GAZEBO_MODEL_PATH="$GAZEBO_MODEL_PATH:/usr/share/gazebo-9/models:[your_workspace_directory]/src/ur5_pick_place/models"
-
-To build from source, clone the latest version from this repository into your catkin workspace and compile the package using
-
-	cd catkin_workspace/src
-	git clone https://github.com/aychaplin/ur5_pick_place.git
-	cd ../
-	rosdep install --from-paths . --ignore-src
-	catkin_make
-
+1. Source gazebo model path, easier to add to .bashrc
+```
+export GAZEBO_MODEL_PATH="$GAZEBO_MODEL_PATH:/usr/share/gazebo-9/models:[your_workspace_directory]/src/ur5_pick_place/models"
+```
+2. To build from source, clone the latest version from this repository into your catkin workspace and compile the package using:
+```
+cd catkin_workspace/src
+git clone https://github.com/aychaplin/ur5_pick_place.git
+cd ../
+rosdep install --from-paths . --ignore-src
+catkin_make
+```
 
 ## Usage
-
-
-For starting gazebo simulation run:
-
+1. For starting gazebo simulation run:
+	```
 	roslaunch ur5_pick_place ur5.launch
-  
-For setting up the MoveIt! nodes to allow motion planning run:
-
+	```
+2. For setting up the MoveIt! nodes to allow motion planning run:
+	```
 	roslaunch ur5_moveit_config ur5_moveit_planning_execution.launch sim:=true limited:=true
-  
-For starting up RViz with a configuration including the MoveIt! Motion Planning plugin run:
-
+	``` 
+3. For starting up RViz with a configuration including the MoveIt! Motion Planning plugin run:
+	```
 	roslaunch ur5_moveit_config moveit_rviz.launch config:=true
-	
-To start the above 3 in one launch (gazebo simulation, MoveIt! node and MoveIt! Motion Planning plugin):
-
-	roslaunch ur5_pick_place ur5_pick_place.launch
-  
-Run pick_place node with:
-
-	rosrun ur5_pick_place ur5_pick_place.py
-
-Pick up the **red** coloured object by:
-```rostopic pub object_colour std_msgs/String "data: 'blue'" ```
+	```
+4. To start the above 3 in one launch (gazebo simulation, MoveIt! node and MoveIt! Motion Planning plugin):
+```
+roslaunch ur5_pick_place ur5_pick_place.launch
+```
+5. Run pick_place node with:
+```
+rosrun ur5_pick_place ur5_pick_place.py
+```
+6. Pick up the **red** coloured object by:
+```
+rostopic pub object_colour std_msgs/String "data: 'blue'" 
+```
 
 ## Launch files
 
@@ -102,6 +96,3 @@ Reads object pose, picks up object and place at defined postion.
 ## Bugs & Feature Requests
 
 Please report bugs and request features using the [Issue Tracker](https://github.com/aychaplin/ur5_pick_place/issues).
-
-[ROS]: http://www.ros.org
-[geometry_msgs/PoseStamped]: http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/PoseStamped.html
