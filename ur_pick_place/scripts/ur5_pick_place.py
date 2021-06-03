@@ -19,7 +19,6 @@ from gazebo_msgs.srv import GetModelState
 from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
 import tf
 from obj_detection.srv import GetObject
-# from six.moves import input
 from builtins import input
 
 ## END_SUB_TUTORIAL
@@ -58,22 +57,8 @@ class MoveGroupPythonIntefaceTutorial(object):
     super(MoveGroupPythonIntefaceTutorial, self).__init__()
     
     moveit_commander.roscpp_initialize(sys.argv)
-
-    ## Instantiate a `RobotCommander`_ object. Provides information such as the robot's
-    ## kinematic model and the robot's current joint states
     robot = moveit_commander.RobotCommander()
-
-    ## Instantiate a `PlanningSceneInterface`_ object.  This provides a remote interface
-    ## for getting, setting, and updating the robot's internal understanding of the
-    ## surrounding world:
     scene = moveit_commander.PlanningSceneInterface()
-
-    ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
-    ## to a planning group (group of joints).  In this tutorial the group is the primary
-    ## arm joints in the Panda robot, so we set the group's name to "panda_arm".
-    ## If you are using a different robot, change this value to the name of your robot
-    ## arm planning group.
-    ## This interface can be used to plan and execute motions:
     group_name = "manipulator"
     move_group = moveit_commander.MoveGroupCommander(group_name)
 
@@ -82,34 +67,19 @@ class MoveGroupPythonIntefaceTutorial(object):
                                                    queue_size=20)
 
     model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
-    # rospy.Subscriber('/camera/object_track', PoseStamped, self.obj_track)
 
-
-
-    ## Getting Basic Information
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^
-    # We can get the name of the reference frame for this robot:
     planning_frame = move_group.get_planning_frame()
-    print("============ Planning frame: %s" % planning_frame)
-
-    # We can also print the name of the end-effector link for this group:
     eef_link = move_group.get_end_effector_link()
-    print("============ End effector link: %s" % eef_link)
-
-    # We can get a list of all the groups in the robot:
     group_names = robot.get_group_names()
+    print("============ End effector link: %s" % eef_link)
+    print("============ Planning frame: %s" % planning_frame)
     print("============ Available Planning Groups:", robot.get_group_names())
-
-    # Sometimes for debugging it is useful to print the entire state of the
-    # robot:
     print("============ Printing robot state")
     print(robot.get_current_state())
-
     print("============ Printing robot state")
     current_pose = move_group.get_current_pose(eef_link).pose
     print(current_pose)
     print("")
-    ## END_SUB_TUTORIAL
 
     # Misc variables
     self.box_name = ''
@@ -169,68 +139,20 @@ class MoveGroupPythonIntefaceTutorial(object):
     current_pose = self.move_group.get_current_pose().pose
     return all_close(pose_goal, current_pose, 0.01)
 
-  def constraint_goal(self,x=0.4,y=-0.1,z=0.4):
-    move_group = self.move_group
-
-    self.constraints = Constraints()
-    ocm = OrientationConstraint()
-
-    ocm.link_name = "panda_link7"
-    ocm.header.frame_id = "panda_link0"
-    ocm.orientation.w = 1.0
-    ocm.absolute_x_axis_tolerance = 0.1
-    ocm.absolute_y_axis_tolerance = 0.1
-    ocm.absolute_z_axis_tolerance = 0.1
-    ocm.weight = 1.0
-
-    self.constraints.orientation_constraints.append(ocm)
-
-    move_group.set_path_constraints(self.constraints)
-
-    pose_goal = geometry_msgs.msg.Pose()
-    pose_goal.orientation.w = 1.0
-    
-    pose_goal.position.x = x
-    pose_goal.position.y = y
-    pose_goal.position.z = z
-
-    move_group.set_pose_target(pose_goal)
-
-    move_group.set_planning_time(10.0)
-
-    ## Now, we call the planner to compute the plan and execute it.
-    plan = move_group.go(wait=True)
-    # Calling `stop()` ensures that there is no residual movement
-    move_group.stop()
-    
-    move_group.clear_path_constraints()
-
-    ## END_SUB_TUTORIAL
-
-    # For testing:
-    # Note that since this section of code will not be included in the tutorials
-    # we use the class variable rather than the copied state variable
-    current_pose = self.move_group.get_current_pose().pose
-    return all_close(pose_goal, current_pose, 0.01)
 
   def plan_goal(self,x,y,z):
     move_group = self.move_group
 
-    #  Pose Orientation
     roll_angle = 0
     pitch_angle = 1.5708
     yaw_angle = 0
     quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw_angle)
 
     pose_goal = geometry_msgs.msg.Pose()
-    # pose_goal.orientation.z = 1.4
     pose_goal.orientation.x = quaternion[0]
     pose_goal.orientation.y = quaternion[1]
     pose_goal.orientation.z = quaternion[2]
     pose_goal.orientation.w = quaternion[3]
-    # pose_goal.position.x = 0.4
-    # pose_goal.position.y = 0.1
-    # pose_goal.position.z = 0.4
     pose_goal.position.x = x
     pose_goal.position.y = y
     pose_goal.position.z = z
@@ -241,47 +163,9 @@ class MoveGroupPythonIntefaceTutorial(object):
     plan = move_group.plan()
     return plan 
 
-  def plan_cartesian(self,end_pose,scale=1):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    move_group = self.move_group
-    ## BEGIN_SUB_TUTORIAL plan_cartesian_path
-    ##
-    ## Cartesian Paths
-    ## ^^^^^^^^^^^^^^^
-    ## You can plan a Cartesian path directly by specifying a list of waypoints
-    ## for the end-effector to go through. If executing  interactively in a
-    ## Python shell, set scale = 1.0.
-    ##
-    waypoints = []
-    #split_path()
-    wpose = move_group.get_current_pose().pose
-
-    # waypoints = self.split_path(wpose,end_pose,5)
-
-    wpose.position.x = end_pose.position.x
-    wpose.position.y = end_pose.position.y
-    wpose.position.z = end_pose.position.z
-    waypoints.append(copy.deepcopy(wpose))
-
-    # We want the Cartesian path to be interpolated at a resolution of 1 cm
-    # which is why we will specify 0.01 as the eef_step in Cartesian
-    # translation.  We will disable the jump threshold by setting it to 0.0,
-    # ignoring the check for infeasible jumps in joint space, which is sufficient
-    # for this tutorial.
-    (plan, fraction) = move_group.compute_cartesian_path(
-                                       waypoints,   # waypoints to follow
-                                       0.01,        # eef_step
-                                       0.0)         # jump_threshold
-
-    # Note: We are just planning, not asking move_group to actually move the robot yet:
-    return plan, fraction
 
   def plan_cartesian_path(self, scale=1):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
+
     move_group = self.move_group
 
     waypoints = []
@@ -297,11 +181,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     wpose.position.y -= scale * 0.1  # Third move sideways (y)
     waypoints.append(copy.deepcopy(wpose))
 
-    # We want the Cartesian path to be interpolated at a resolution of 1 cm
-    # which is why we will specify 0.01 as the eef_step in Cartesian
-    # translation.  We will disable the jump threshold by setting it to 0.0,
-    # ignoring the check for infeasible jumps in joint space, which is sufficient
-    # for this tutorial.
     (plan, fraction) = move_group.compute_cartesian_path(
                                        waypoints,   # waypoints to follow
                                        0.01,        # eef_step
@@ -314,61 +193,21 @@ class MoveGroupPythonIntefaceTutorial(object):
     
     robot = self.robot
     display_trajectory_publisher = self.display_trajectory_publisher
-
-    ## BEGIN_SUB_TUTORIAL display_trajectory
-    ##
-    ## Displaying a Trajectory
-    ## ^^^^^^^^^^^^^^^^^^^^^^^
-    ## You can ask RViz to visualize a plan (aka trajectory) for you. But the
-    ## group.plan() method does this automatically so this is not that useful
-    ## here (it just displays the same trajectory again):
-    ##
-    ## A `DisplayTrajectory`_ msg has two primary fields, trajectory_start and trajectory.
-    ## We populate the trajectory_start with our current robot state to copy over
-    ## any AttachedCollisionObjects and add our plan to the trajectory.
     display_trajectory = moveit_msgs.msg.DisplayTrajectory()
     display_trajectory.trajectory_start = robot.get_current_state()
     display_trajectory.trajectory.append(plan)
-    # Publish
     display_trajectory_publisher.publish(display_trajectory)
-
-    ## END_SUB_TUTORIAL
 
 
   def execute_plan(self, plan):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
     move_group = self.move_group
 
-    ## BEGIN_SUB_TUTORIAL execute_plan
-    ##
-    ## Executing a Plan
-    ## ^^^^^^^^^^^^^^^^
-    ## Use execute if you would like the robot to follow
-    ## the plan that has already been computed:
     move_group.execute(plan, wait=True)
-
-    ## **Note:** The robot's current joint state must be within some tolerance of the
-    ## first waypoint in the `RobotTrajectory`_ or ``execute()`` will fail
-    ## END_SUB_TUTORIAL
 
 
   def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
     box_name = self.box_name
     scene = self.scene
-
-    ## BEGIN_SUB_TUTORIAL wait_for_scene_update
-    ##
-    ## Ensuring Collision Updates Are Receieved
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ## If the Python node dies before publishing a collision object update message, the message
-    ## could get lost and the box will not appear. To ensure that the updates are
-    ## made, we wait until we see the changes reflected in the
-    ## ``get_attached_objects()`` and ``get_known_object_names()`` lists.
 
     start = rospy.get_time()
     seconds = rospy.get_time()
@@ -391,7 +230,6 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     # If we exited the while loop without returning then we timed out
     return False
-    ## END_SUB_TUTORIAL
 
   def add_box(self, *args):
     timeout=4
@@ -478,28 +316,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     # wait for the planning scene to update.
     return self.wait_for_state_update(box_is_known=True, box_is_attached=False, timeout=timeout)
 
-  def split_path(self,p1,p2,n=5):
-    # redundant as cartesian paths splits path already
-
-    wpose = copy.deepcopy(p1)
-
-    x1,y1,z1 = p1.position.x,p1.position.y,p1.position.z
-    x2,y2,z2 = p2.position.x,p2.position.y,p2.position.z
-
-    points = []
-    for i in range(1, n):
-        a = float(i) / n             # rescale 0 < i < n --> 0 < a < 1
-        x = (1 - a) * x1 + a * x2    # interpolate x coordinate
-        y = (1 - a) * y1 + a * y2    # interpolate y coordinate
-        z = (1 - a) * z1 + a * z2    # interpolate y coordinate
-
-        wpose.position.x = x
-        wpose.position.y = y
-        wpose.position.z = z
-        points.append(copy.deepcopy(wpose))
-    
-    return points
-
 
   def remove_box(self, timeout=4):
     box_name = self.box_name
@@ -511,25 +327,9 @@ class MoveGroupPythonIntefaceTutorial(object):
     return self.wait_for_state_update(box_is_attached=False, box_is_known=False, timeout=timeout)
 
 
-  # object tracking Callback 
-  def obj_track(self,msg):
-      # print(msg)
-      try:
-        msg.header.frame_id = "camera_depth_optical_frame"
-        p=listener.transformPose("base_link",msg)
-      except tf.TransformException as e:
-        print(type(e))
-      
-      # print(p)
-      self.sphere_img_pose = p.pose
-      # euler = tf.transformations.euler_from_quaternion(self.sphere_img_pose.orientation)
-      # print("obj angle: {}".format(self.sphere_img_pose.orientation.w))
-      self.sphere_img_orien = msg.pose.orientation.w
-
   def transf_pose_arr(self,pose_arr):
     tf_pose_array = []
     pose = PoseStamped()
-    # pose.header = pose_arr.header
     pose.header.frame_id = "camera_depth_optical_frame"
 
     for p in pose_arr.poses:
