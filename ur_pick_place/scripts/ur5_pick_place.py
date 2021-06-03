@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-
-
 import sys
 import copy
 import rospy
@@ -20,8 +18,6 @@ from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
 import tf
 from obj_detection.srv import GetObject
 from builtins import input
-
-## END_SUB_TUTORIAL
 
 
 def all_close(goal, actual, tolerance):
@@ -46,10 +42,6 @@ def all_close(goal, actual, tolerance):
 
   return True
 
-#TODO: 
-class Fruit:
-  def __init__(self,name):
-    self._name = name
 
 class MoveGroupPythonIntefaceTutorial(object):
   """MoveGroupPythonIntefaceTutorial"""
@@ -94,7 +86,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.sphere_img = []
     self.sphere_img_pose = PoseStamped().pose
 
-    self.sphere_img_orien = 0
 
   def go_to_joint_state(self,joint_goal):
     move_group = self.move_group
@@ -112,14 +103,12 @@ class MoveGroupPythonIntefaceTutorial(object):
   def go_to_pose_goal(self,x,y,z,yaw=0):
     move_group = self.move_group
 
-    #  Pose Orientation - Fixed
     roll_angle = 0
     pitch_angle = 1.57
     yaw_angle = yaw
     quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw_angle)
 
     pose_goal = geometry_msgs.msg.Pose()
-    # pose_goal.orientation.z = 1.4
     pose_goal.orientation.x = quaternion[0]
     pose_goal.orientation.y = quaternion[1]
     pose_goal.orientation.z = quaternion[2]
@@ -132,7 +121,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     move_group.set_pose_target(pose_goal)
 
     plan = move_group.go(wait=True)
-    # Calling `stop()` ensures that there is no residual movement
+    # ensure no residual movement
     move_group.stop()
     move_group.clear_pose_targets()
 
@@ -140,12 +129,12 @@ class MoveGroupPythonIntefaceTutorial(object):
     return all_close(pose_goal, current_pose, 0.01)
 
 
-  def plan_goal(self,x,y,z):
+  def plan_goal(self,x,y,z,yaw=0):
     move_group = self.move_group
 
     roll_angle = 0
     pitch_angle = 1.5708
-    yaw_angle = 0
+    yaw_angle = yaw
     quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw_angle)
 
     pose_goal = geometry_msgs.msg.Pose()
@@ -190,7 +179,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     return plan, fraction
 
   def display_trajectory(self, plan):
-    
     robot = self.robot
     display_trajectory_publisher = self.display_trajectory_publisher
     display_trajectory = moveit_msgs.msg.DisplayTrajectory()
@@ -201,7 +189,6 @@ class MoveGroupPythonIntefaceTutorial(object):
 
   def execute_plan(self, plan):
     move_group = self.move_group
-
     move_group.execute(plan, wait=True)
 
 
