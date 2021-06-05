@@ -90,7 +90,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     # get_all_models variable
     self.ignored_models = ['ground_plane','ConfTable','robot']
-    self.min_dist = 0.5
+    self.min_dist = 0.5*0.5
 
   def go_to_joint_state(self,joint_goal):
     move_group = self.move_group
@@ -336,6 +336,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 def get_closest_coordinate(target_pose):
   all_model = tutorial.get_all_models()
   corrected_target_pose = Pose()
+  correct_object = None
   closest_distance = 9999.0
   diff = 0
   for object in all_model.model_names:
@@ -346,8 +347,10 @@ def get_closest_coordinate(target_pose):
     if diff < closest_distance:
       closest_distance = diff
       corrected_target_pose = object_pose
+      correct_object = object
   if diff >tutorial.min_dist:
     return target_pose
+  print("Corrected object:",correct_object)
   return corrected_target_pose
 
 def trigger_pick_and_place(data):
