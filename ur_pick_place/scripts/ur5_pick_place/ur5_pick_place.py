@@ -13,7 +13,7 @@ from moveit_commander.conversions import pose_to_list
 from moveit_msgs.msg import Constraints, JointConstraint, OrientationConstraint
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import random
-from gazebo_msgs.srv import GetModelState
+from gazebo_msgs.srv import GetModelState, GetWorldProperties
 from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
 import tf
 from obj_detection.srv import GetObject
@@ -59,6 +59,7 @@ class MoveGroupPythonIntefaceTutorial(object):
                                                    queue_size=20)
 
     model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
+    get_all_models = rospy.ServiceProxy('gazebo/get_world_properties', GetWorldProperties)
 
     planning_frame = move_group.get_planning_frame()
     eef_link = move_group.get_end_effector_link()
@@ -83,9 +84,13 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.eef_link = eef_link
     self.group_names = group_names
     self.model_coordinates = model_coordinates
+    self.get_all_models = get_all_models
     self.sphere_img = []
     self.sphere_img_pose = PoseStamped().pose
 
+    # get_all_models variable
+    self.ignored_models = ['ground_plane','ConfTable','robot']
+    self.min_dist = 0.5
 
   def go_to_joint_state(self,joint_goal):
     move_group = self.move_group
@@ -328,6 +333,23 @@ class MoveGroupPythonIntefaceTutorial(object):
     print(tf_pose_array)
     return tf_pose_array
 
+def get_closest_coordinate(target_pose):
+  all_model = tutorial.get_all_models()
+  corrected_target_pose = Pose()
+  closest_distance = 9999.0
+  diff = 0
+  for object in all_model.model_names:
+    if object in tutorial.ignored_models:
+      continue
+    object_pose = tutorial.model_coordinates(object,"").pose
+    diff = (object_pose.position.x - target_pose.position.x)**2 + (object_pose.position.y - target_pose.position.y)**2
+    if diff < closest_distance:
+      closest_distance = diff
+      corrected_target_pose = object_pose
+  if diff >tutorial.min_dist:
+    return target_pose
+  return corrected_target_pose
+
 def trigger_pick_and_place(data):
   print("-------- Started --------")
   try:
@@ -338,7 +360,9 @@ def trigger_pick_and_place(data):
       pose_tf = tutorial.transf_pose_arr(pose.poses)
 
       for p in pose_tf:
-        tutorial.go_to_pose_goal(p.position.x, p.position.y,0.18,p.orientation.w-1.5708)
+        previous_orientation = p.orientation.w
+        p = get_closest_coordinate(p)
+        tutorial.go_to_pose_goal(p.position.x, p.position.y,0.15,previous_orientation-1.5708)
         rospy.sleep(2.0)
       tutorial.go_to_joint_state(observe_goal)
 
