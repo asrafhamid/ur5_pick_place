@@ -157,6 +157,24 @@ class MoveGroupPythonIntefaceTutorial(object):
     plan = move_group.plan()
     return plan 
 
+  def plan_cartesian(self,end_pose,scale=1):
+
+    move_group = self.move_group
+
+    waypoints = []
+    wpose = move_group.get_current_pose().pose
+
+    wpose.position.x = end_pose.position.x
+    wpose.position.y = end_pose.position.y
+    wpose.position.z = end_pose.position.z
+    waypoints.append(copy.deepcopy(wpose))
+
+    (plan, fraction) = move_group.compute_cartesian_path(
+                                       waypoints,   # waypoints to follow
+                                       0.01,        # eef_step
+                                       0.0)         # jump_threshold
+
+    return plan, fraction
 
   def plan_cartesian_path(self, scale=1):
 
