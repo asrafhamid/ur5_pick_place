@@ -133,6 +133,14 @@ class MoveGroupPythonIntefaceTutorial(object):
     current_pose = self.move_group.get_current_pose().pose
     return all_close(pose_goal, current_pose, 0.01)
 
+  def plan_goal_pose(self,pose_goal):
+    move_group = self.move_group
+
+    move_group.set_pose_target(pose_goal)
+
+    ## Now, we call the planner to compute the plan and execute it.
+    plan = move_group.plan()
+    return plan 
 
   def plan_goal(self,x,y,z,yaw=0):
     move_group = self.move_group
@@ -157,7 +165,19 @@ class MoveGroupPythonIntefaceTutorial(object):
     plan = move_group.plan()
     return plan 
 
-  def plan_cartesian(self,end_pose,scale=1):
+  def def_pose(self,x,y,z,ox,oy,oz,ow):
+    pose = geometry_msgs.msg.Pose()
+    pose.orientation.x = ox
+    pose.orientation.y = oy
+    pose.orientation.z = oz
+    pose.orientation.w = ow
+    pose.position.x = x
+    pose.position.y = y
+    pose.position.z = z
+
+    return pose
+
+  def plan_cartesian(self,end_pose,limit_z=False,rot_w=False):
 
     move_group = self.move_group
 
@@ -166,15 +186,46 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     wpose.position.x = end_pose.position.x
     wpose.position.y = end_pose.position.y
-    wpose.position.z = end_pose.position.z
-    waypoints.append(copy.deepcopy(wpose))
+    if limit_z:
+      wpose.position.z = 0.30
+    else:
+      wpose.position.z = end_pose.position.z
 
+    if rot_w:
+      yaw = end_pose.orientation.w-1.5708
+      roll_angle = 0
+      pitch_angle = 1.5708
+      quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw)
+      wpose.orientation.x = quaternion[0]
+      wpose.orientation.y = quaternion[1]
+      wpose.orientation.z = quaternion[2]
+      wpose.orientation.w = quaternion[3]
+
+    waypoints.append(copy.deepcopy(wpose))
     (plan, fraction) = move_group.compute_cartesian_path(
                                        waypoints,   # waypoints to follow
                                        0.01,        # eef_step
                                        0.0)         # jump_threshold
 
     return plan, fraction
+
+  def insert_eject(self, insert=True, scale=1):
+
+    move_group = self.move_group
+
+    waypoints = []
+
+    wpose = move_group.get_current_pose().pose
+    if not insert:
+      scale *= -0.8
+    wpose.position.z -= scale * 0.1 
+    waypoints.append(copy.deepcopy(wpose))
+
+    (plan, fraction) = move_group.compute_cartesian_path(
+                                       waypoints,   # waypoints to follow
+                                       0.01,        # eef_step
+                                       0.0)         # jump_threshold
+    return plan
 
   def plan_cartesian_path(self, scale=1):
 
@@ -337,7 +388,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     return self.wait_for_state_update(box_is_attached=False, box_is_known=False, timeout=timeout)
 
 
-  def transf_pose_arr(self,pose_arr):
+  def transf_pose_arr(self,pose_arr,listener):
     tf_pose_array = []
     pose = PoseStamped()
     pose.header.frame_id = "camera_depth_optical_frame"
@@ -351,25 +402,25 @@ class MoveGroupPythonIntefaceTutorial(object):
     print(tf_pose_array)
     return tf_pose_array
 
-def get_closest_coordinate(target_pose):
-  all_model = tutorial.get_all_models()
-  corrected_target_pose = Pose()
-  correct_object = None
-  closest_distance = 9999.0
-  diff = 0
-  for object in all_model.model_names:
-    if object in tutorial.ignored_models:
-      continue
-    object_pose = tutorial.model_coordinates(object,"").pose
-    diff = (object_pose.position.x - target_pose.position.x)**2 + (object_pose.position.y - target_pose.position.y)**2
-    if diff < closest_distance:
-      closest_distance = diff
-      corrected_target_pose = object_pose
-      correct_object = object
-  if diff >tutorial.min_dist:
-    return target_pose
-  print("Corrected object:",correct_object)
-  return corrected_target_pose
+  def get_closest_coordinate(self,target_pose):
+    all_model = self.get_all_models()
+    corrected_target_pose = Pose()
+    correct_object = None
+    closest_distance = 9999.0
+    diff = 0
+    for object in all_model.model_names:
+      if object in self.ignored_models:
+        continue
+      object_pose = self.model_coordinates(object,"").pose
+      diff = (object_pose.position.x - target_pose.position.x)**2 + (object_pose.position.y - target_pose.position.y)**2
+      if diff < closest_distance:
+        closest_distance = diff
+        corrected_target_pose = object_pose
+        correct_object = object
+    if diff >self.min_dist:
+      return target_pose
+    print("Corrected object:",correct_object)
+    return corrected_target_pose
 
 def trigger_pick_and_place(data):
   print("-------- Started --------")
@@ -382,7 +433,7 @@ def trigger_pick_and_place(data):
 
       for p in pose_tf:
         previous_orientation = p.orientation.w
-        p = get_closest_coordinate(p)
+        p = tutorial.get_closest_coordinate(p)
         tutorial.go_to_pose_goal(p.position.x, p.position.y,0.15,previous_orientation-1.5708)
         rospy.sleep(2.0)
       tutorial.go_to_joint_state(observe_goal)
