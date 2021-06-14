@@ -112,7 +112,7 @@ class TriggerPickAndPlace(smach.State):
 # define state PlanPick
 class PlanPick(smach.State):
     def __init__(self,move_grp):
-        smach.State.__init__(self, outcomes=['end_plan','waiting_state'],output_keys=['color'])
+        smach.State.__init__(self, outcomes=['pick_robot_arm_state','waiting_state'],output_keys=['color'])
         self.move_grp = move_grp
         self.pose = []
 
@@ -126,19 +126,15 @@ class PlanPick(smach.State):
 
             if plan.joint_trajectory.points:
                 print("plan is succesfull!")
-                self.move_grp.execute_plan(plan)
-                self.move_grp.go_to_pose_goal(p.position.x, p.position.y,0.20,p_orient-1.5708)
-                return 'end_plan'
+                userdata.plan = plan
+                # self.move_grp.execute_plan(plan)
+                # self.move_grp.go_to_pose_goal(p.position.x, p.position.y,0.20,p_orient-1.5708)
+                return 'pick_robot_arm_state'
             else:
                 print("plan failed!")
                 return 'waiting_state' 
         else:
             return 'waiting_state'
-    
-    def trigger_pick_and_place(self,data):
-        # self.trigger = True
-        self.color = data.data
-        self.pose = self.obj_srv(self.color)
 
 # define state PickRobotArm
 class PickRobotArm(smach.State):
@@ -147,13 +143,19 @@ class PickRobotArm(smach.State):
         rospy.Subscriber("arm_controller/follow_joint_trajectory/result", FollowJointTrajectoryActionResult, self.result_cb)
         self.result = -1
         self.move_grp = move_grp
+        self.counter = 0
 
     def execute(self, userdata):
         rospy.loginfo('Executing state PickRobotArm')
-        # self.move_grp.execute_plan(plan)
-        # self.move_grp.go_to_pose_goal(p.position.x, p.position.y,0.20,p_orient-1.5708)
 
-        if self.result == 3:
+        if userdata.target_pose:
+            p = userdata.target_pose
+            p_orient = p.orientation.w
+
+            self.move_grp.execute_plan(self.plan)
+            self.move_grp.go_to_pose_goal(p.position.x, p.position.y,0.20,p_orient-1.5708)
+
+        if self.counter == 2:
             return 'pick_robot_arm_state'
         else:
             return 'gripper_pick_state'
@@ -161,6 +163,8 @@ class PickRobotArm(smach.State):
     def result_cb(self,data):
         print("result: "+data.status.status)
         self.result = data.status.status
+        self.counter += 1
+        
 
 def main():
     rospy.init_node('ur_smach_state_machine')
@@ -177,6 +181,7 @@ def main():
     sm = smach.StateMachine(outcomes=['outcome4'])
     sm.userdata.color = ""
     sm.userdata.target_pose = None
+    sm.userdata.plan = None
 
     # Open the container
     with sm:
@@ -198,7 +203,7 @@ def main():
                                'trigger_pick_place_task':'TriggerPickAndPlace'})
                     
         smach.StateMachine.add('PlanPick', PlanPick(move_grp), 
-                               transitions={'end_plan':'PickRobotArm',
+                               transitions={'pick_robot_arm_state':'PickRobotArm',
                                'waiting_state':'PlanPick'})
 
         smach.StateMachine.add('PickRobotArm', PickRobotArm(move_grp), 
