@@ -1,1 +1,2 @@
 *.pyc
+robotiq/robotiq_description/urdf/robotiq_85_gripper.urdf.xacro
