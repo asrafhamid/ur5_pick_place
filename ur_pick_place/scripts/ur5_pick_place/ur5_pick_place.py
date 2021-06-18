@@ -177,6 +177,49 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     return pose
 
+  def plan_pick(self,end_pose):
+    move_group = self.move_group
+
+    waypoints = []
+    spot_a = end_pose
+    spot_a.position.z = 0.2
+
+    q = quaternion_from_euler(0, 1.5708, end_pose.orientation.w-1.5708) #RPY
+    spot_a.orientation.x = q[0]
+    spot_a.orientation.y = q[1]
+    spot_a.orientation.z = q[2]
+    spot_a.orientation.w = q[3]
+
+    waypoints.append(copy.deepcopy(spot_a))
+
+    end_pose.orientation = spot_a.orientation
+    end_pose.position.z = 0
+
+    waypoints.append(copy.deepcopy(end_pose))
+
+    (plan, fraction) = move_group.compute_cartesian_path(
+                                       waypoints,   # waypoints to follow
+                                       0.01,        # eef_step
+                                       0.0)         # jump_threshold
+    return plan, fraction
+
+  def plan_place(self,end_pose):
+    move_group = self.move_group
+
+    waypoints = []
+    spot_a = move_group.get_current_pose().pose
+    # spot_a = end_pose
+    spot_a.position.z = 0.2
+
+    waypoints.append(copy.deepcopy(spot_a))
+    waypoints.append(copy.deepcopy(end_pose))
+
+    (plan, fraction) = move_group.compute_cartesian_path(
+                                       waypoints,   # waypoints to follow
+                                       0.01,        # eef_step
+                                       0.0)         # jump_threshold
+    return plan, fraction
+
   def plan_cartesian(self,end_pose,limit_z=False,rot_w=False):
 
     move_group = self.move_group
@@ -217,8 +260,8 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     wpose = move_group.get_current_pose().pose
     if not insert:
-      scale *= -0.8
-    wpose.position.z -= scale * 0.1 
+      scale *= -1
+    wpose.position.z -= scale * 0.2
     waypoints.append(copy.deepcopy(wpose))
 
     (plan, fraction) = move_group.compute_cartesian_path(
@@ -263,7 +306,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
   def execute_plan(self, plan):
     move_group = self.move_group
-    move_group.execute(plan, wait=True)
+    return move_group.execute(plan, wait=True)
 
 
   def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
