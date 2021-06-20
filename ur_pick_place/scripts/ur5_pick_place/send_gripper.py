@@ -9,6 +9,14 @@ import rospy
 import actionlib
 import control_msgs.msg
 
+def callback_active():
+    rospy.loginfo("Action server is processing the goal")
+
+def callback_done(state, result):
+    rospy.loginfo("Action server is done. State: %s, result: %s" % (str(state), str(result)))
+
+def callback_feedback(feedback):
+    rospy.loginfo("Feedback:%s" % str(feedback))
 
 def gripper_client(value):
 
@@ -25,7 +33,10 @@ def gripper_client(value):
     goal = control_msgs.msg.GripperCommandGoal()
     goal.command.position = value   # From 0.0 to 0.8
     goal.command.max_effort = -1.0  # Do not limit the effort
-    client.send_goal(goal)
+    client.send_goal(goal,
+                    active_cb=callback_active,
+                    feedback_cb=callback_feedback,
+                    done_cb=callback_done)
 
     client.wait_for_result()
     return client.get_result()

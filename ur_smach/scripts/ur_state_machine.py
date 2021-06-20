@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import roslib
 import rospy
 import threading
 import smach
@@ -13,7 +12,8 @@ from math import pi
 import time
 from geometry_msgs.msg import PointStamped, PoseStamped
 from ur5_pick_place.ur5_pick_place import MoveGroupPythonIntefaceTutorial
-from control_msgs.msg import FollowJointTrajectoryActionResult
+from control_msgs.msg import FollowJointTrajectoryActionResult, GripperCommandAction,GripperCommandGoal
+import actionlib
 
 # define state CheckRobotArm
 class CheckRobotArm(smach.State):
@@ -55,6 +55,8 @@ class ObserveRobotArm(smach.State):
         smach.State.__init__(self, outcomes=['trigger_pick_place_task','observe_robot_arm_state'])
         self.result = -1
         self.move_grp = move_grp
+
+        #TODO: move this observe_goal to move_grp.def_pose
         self.observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.2754254250487067]
 
     def execute(self, userdata):
@@ -86,6 +88,7 @@ class TriggerPickAndPlace(smach.State):
         rospy.loginfo('Executing state TriggerPickAndPlace')
 
         # self.trigger = False
+        # Question: Why sleep in every execute? to save cpu usage? [Tested: from around 85% to 35%]
         time.sleep(5)
 
         # if self.poses_tf:
@@ -102,9 +105,10 @@ class TriggerPickAndPlace(smach.State):
         # else:
         #     return 'trigger_pick_place_task'
 
-        if self.counter >= 5:
-            return 'exit'
-
+        # Question: Why terminate in this way?
+        # if self.counter >= 5:
+        #     return 'exit'
+        
         if self.user_clr:
             for clr in self.arm_clr:
                 data = self.obj_srv(clr)
@@ -117,9 +121,11 @@ class TriggerPickAndPlace(smach.State):
                     userdata.target_pose = target_pose
                     userdata.color = clr
                     self.counter = 0
+                    self.user_clr = ""
+                    self.arm_clr = []
                     return 'plan_pick_state'
-            self.user_clr = ""
-            self.arm_clr = []
+            # self.user_clr = ""
+            # self.arm_clr = []
         self.counter+=1
         print(self.counter)
         return 'trigger_pick_place_task'
@@ -191,41 +197,64 @@ class PickRobotArm(smach.State):
 
 # define state GrabGripper
 class GrabGripper(smach.State):
-    def __init__(self):
+    def __init__(self,gripper_client):
         smach.State.__init__(self, outcomes=['grab_gripper_state','plan_place_state'])
         # rospy.Subscriber("arm_controller/follow_joint_trajectory/result", FollowJointTrajectoryActionResult, self.result_cb)
         # self.result = -1
         self.trigger = True
+        self.gripper_controller = gripper_client
+
+        self.gripper_goal = GripperCommandGoal()
+        self.gripper_goal.command.position = 0.8   # From 0.0 to 0.8
+        self.gripper_goal.command.max_effort = -1.0  # Do not limit the effort
 
     def execute(self, userdata):
         rospy.loginfo('Executing state GrabGripper')
 
         if self.trigger:
-            return 'plan_place_state'
-        else:
+            self.gripper_controller.gripper_client.send_goal(self.gripper_goal,
+                    active_cb=self.gripper_controller.callback_active,
+                    feedback_cb=self.gripper_controller.callback_feedback,
+                    done_cb=self.gripper_controller.callback_done)
+            self.trigger = False
+        if self.gripper_controller.result!=3:
             return 'grab_gripper_state'
 
+        print("Grap Gripper Finished!!!\n")
+        self.gripper_controller.result = -1
+        self.trigger = True
+        time.sleep(3)
+        return 'plan_place_state'
 
 class ReleaseGripper(smach.State):
-    def __init__(self):
+    def __init__(self,gripper_client):
         smach.State.__init__(self, outcomes=['release_gripper_state','ending_state'])
         # rospy.Subscriber("arm_controller/follow_joint_trajectory/result", FollowJointTrajectoryActionResult, self.result_cb)
         # self.result = -1
         self.trigger = True
+        self.gripper_controller = gripper_client
+
+        self.gripper_goal = GripperCommandGoal()
+        self.gripper_goal.command.position = 0.0   # From 0.0 to 0.8
+        self.gripper_goal.command.max_effort = -1.0  # Do not limit the effort
 
     def execute(self, userdata):
         rospy.loginfo('Executing state ReleaseGripper')
 
         if self.trigger:
-            return 'ending_state'
-        else:
+            self.gripper_controller.gripper_client.send_goal(self.gripper_goal,
+                    active_cb=self.gripper_controller.callback_active,
+                    feedback_cb=self.gripper_controller.callback_feedback,
+                    done_cb=self.gripper_controller.callback_done)
+            self.trigger = False
+        if self.gripper_controller.result!=3:
             return 'release_gripper_state'
 
-    # def result_cb(self,data):
-    #     print("result: "+str(data.status.status))
-    #     self.result = data.status.status
-    #     if self.result == 3:
-    #         self.counter += 1
+        print("Release Gripper Finished!!!\n")
+        self.gripper_controller.result = -1
+        self.trigger = True
+        time.sleep(3)
+        return 'ending_state'
 
 # define state PlanPlace
 class PlanPlace(smach.State):
@@ -276,12 +305,27 @@ class PlaceRobotArm(smach.State):
         else:
             return 'place_robot_arm_state'
 
+class GripperController:
+    def __init__(self):
+        print("GripperController")
+        self.gripper_client = actionlib.SimpleActionClient('/gripper_controller/gripper_cmd',GripperCommandAction)
+        self.gripper_client.wait_for_server()
+        self.result = -2
+    def callback_active(self):
+        self.result = -1
+        rospy.loginfo("Action server is processing the goal")
+    def callback_done(self,state, result):
+        self.result = 3
+        rospy.loginfo("Action server is done. State: %s, result: %s" % (str(state), str(result)))
+    def callback_feedback(self,feedback):
+        rospy.loginfo("Feedback:%s" % str(feedback))
 
 def main():
     rospy.init_node('ur_smach_state_machine')
 
     listener = tf.TransformListener()
     move_grp = MoveGroupPythonIntefaceTutorial()
+    gripper_controller = GripperController()
 
     # Create a SMACH state machine
     sm = smach.StateMachine(outcomes=['outcome4'])
@@ -321,7 +365,7 @@ def main():
                                transitions={'grab_gripper_state':'GrabGripper',
                                'pick_robot_arm_state':'PickRobotArm'})
 
-        smach.StateMachine.add('GrabGripper', GrabGripper(), 
+        smach.StateMachine.add('GrabGripper', GrabGripper(gripper_controller), 
                                transitions={'plan_place_state':'PlanPlace',
                                'grab_gripper_state':'GrabGripper'})
 
@@ -333,7 +377,7 @@ def main():
                                transitions={'release_gripper_state':'ReleaseGripper',
                                'place_robot_arm_state':'PlaceRobotArm'})
 
-        smach.StateMachine.add('ReleaseGripper', ReleaseGripper(), 
+        smach.StateMachine.add('ReleaseGripper', ReleaseGripper(gripper_controller), 
                                transitions={'ending_state':'ObserveRobotArm',
                                'release_gripper_state':'ReleaseGripper'})
 
