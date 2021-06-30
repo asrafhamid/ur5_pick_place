@@ -112,12 +112,15 @@ class TriggerPickAndPlace(smach.State):
         if self.user_clr:
             for clr in self.arm_clr:
                 data = self.obj_srv(clr)
+                print(data)
                 poses_tf = self.move_grp.transf_pose_arr(data.poses,self.listener)
                 if poses_tf:
                     print(poses_tf)
                     first_pose = poses_tf[0]
                     target_pose = self.move_grp.get_closest_coordinate(first_pose)
-                    target_pose.orientation.w = first_pose.orientation.w
+                    target_pose.orientation.w = first_pose.orientation.w # keep orientation
+                    # print("Z IS {}".format(target_pose.position.z))
+                    target_pose.position.z -=0.74 # offset error in gazebo
                     userdata.target_pose = target_pose
                     userdata.color = clr
                     self.counter = 0

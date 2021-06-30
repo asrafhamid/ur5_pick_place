@@ -181,8 +181,8 @@ class MoveGroupPythonIntefaceTutorial(object):
     move_group = self.move_group
 
     waypoints = []
-    spot_a = end_pose
-    spot_a.position.z = 0.2
+    spot_a = copy.deepcopy(end_pose)
+    spot_a.position.z = 0.3
 
     q = quaternion_from_euler(0, 1.5708, end_pose.orientation.w-1.5708) #RPY
     spot_a.orientation.x = q[0]
@@ -193,7 +193,8 @@ class MoveGroupPythonIntefaceTutorial(object):
     waypoints.append(copy.deepcopy(spot_a))
 
     end_pose.orientation = spot_a.orientation
-    end_pose.position.z = 0
+    end_pose.position.z +=0.1
+    # end_pose.position.z = 0.1
 
     waypoints.append(copy.deepcopy(end_pose))
 
@@ -209,7 +210,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     waypoints = []
     spot_a = move_group.get_current_pose().pose
     # spot_a = end_pose
-    spot_a.position.z = 0.2
+    spot_a.position.z = 0.5
 
     waypoints.append(copy.deepcopy(spot_a))
     waypoints.append(copy.deepcopy(end_pose))
@@ -477,7 +478,7 @@ def trigger_pick_and_place(data):
       for p in pose_tf:
         previous_orientation = p.orientation.w
         p = tutorial.get_closest_coordinate(p)
-        tutorial.go_to_pose_goal(p.position.x, p.position.y,0.15,previous_orientation-1.5708)
+        tutorial.go_to_pose_goal(p.position.x, p.position.y,p.position.z,previous_orientation-1.5708)
         rospy.sleep(2.0)
       tutorial.go_to_joint_state(observe_goal)
 

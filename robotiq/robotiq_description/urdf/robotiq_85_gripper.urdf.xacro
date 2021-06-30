@@ -223,11 +223,11 @@
           <mesh filename="package://robotiq_description/meshes/visual/robotiq_85_finger_tip_link.dae"/>
         </geometry>
       </visual>
-      <!-- <collision>
+      <collision>
         <geometry>
           <mesh filename="package://robotiq_description/meshes/collision/robotiq_85_finger_tip_link.stl"/>
         </geometry>
-      </collision> -->
+      </collision>
       <inertial>
         <mass value="0.019555" />
         <origin xyz="0.0 0.0 0.0" />
@@ -243,11 +243,11 @@
           <mesh filename="package://robotiq_description/meshes/visual/robotiq_85_finger_tip_link.dae"/>
         </geometry>
       </visual>
-      <!-- <collision>
+      <collision>
         <geometry>
           <mesh filename="package://robotiq_description/meshes/collision/robotiq_85_finger_tip_link.stl"/>
         </geometry>
-      </collision> -->
+      </collision>
       <inertial>
         <mass value="0.019555" />
         <origin xyz="0.0 0.0 0.0" />
