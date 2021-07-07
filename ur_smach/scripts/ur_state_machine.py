@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import threading
@@ -26,7 +26,10 @@ class CheckRobotArm(smach.State):
         self.listener.waitForTransform("/base_link", "/camera_link", rospy.Time(0),rospy.Duration(4.0))
 
         # rospy.wait_for_service('/get_obj_clr')
-        if '/arm_controller/query_state' in rosservice.get_service_list():
+        
+
+        # if '/arm_controller/query_state' in rosservice.get_service_list():
+        if '/scaled_pos_joint_traj_controller/query_state' in rosservice.get_service_list():
             return 'init_robot_arm_state'
         else:
             return 'check_robot_arm_state'
@@ -57,7 +60,7 @@ class ObserveRobotArm(smach.State):
         self.move_grp = move_grp
 
         #TODO: move this observe_goal to move_grp.def_pose
-        self.observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.2754254250487067]
+        self.observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.1404254250487067]
 
     def execute(self, userdata):
         rospy.loginfo('Executing state ObserveRobotArm')
@@ -116,11 +119,12 @@ class TriggerPickAndPlace(smach.State):
                 poses_tf = self.move_grp.transf_pose_arr(data.poses,self.listener)
                 if poses_tf:
                     print(poses_tf)
-                    first_pose = poses_tf[0]
-                    target_pose = self.move_grp.get_closest_coordinate(first_pose)
-                    target_pose.orientation.w = first_pose.orientation.w # keep orientation
-                    # print("Z IS {}".format(target_pose.position.z))
-                    target_pose.position.z -=0.74 # offset error in gazebo
+                    # first_pose = poses_tf[0]
+                    target_pose = poses_tf[0]
+                    # target_pose = self.move_grp.get_closest_coordinate(first_pose)
+                    target_pose.orientation.w = target_pose.orientation.w # keep orientation
+                    print("TRANFORMED POSE IS {}".format(target_pose))
+                    # target_pose.position.z -=0.74 # offset error in gazebo
                     userdata.target_pose = target_pose
                     userdata.color = clr
                     self.counter = 0
@@ -312,7 +316,7 @@ class GripperController:
     def __init__(self):
         print("GripperController")
         self.gripper_client = actionlib.SimpleActionClient('/gripper_controller/gripper_cmd',GripperCommandAction)
-        self.gripper_client.wait_for_server()
+        # self.gripper_client.wait_for_server()
         self.result = -2
     def callback_active(self):
         self.result = -1
@@ -365,7 +369,7 @@ def main():
                                'waiting_state':'PlanPick'})
 
         smach.StateMachine.add('PickRobotArm', PickRobotArm(move_grp), 
-                               transitions={'grab_gripper_state':'GrabGripper',
+                               transitions={'grab_gripper_state':'ObserveRobotArm',
                                'pick_robot_arm_state':'PickRobotArm'})
 
         smach.StateMachine.add('GrabGripper', GrabGripper(gripper_controller), 

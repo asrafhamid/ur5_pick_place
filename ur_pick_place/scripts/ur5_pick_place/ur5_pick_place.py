@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 import copy
 import rospy
@@ -109,7 +109,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     move_group = self.move_group
 
     roll_angle = 0
-    pitch_angle = 1.57
+    pitch_angle = 3.14
     yaw_angle = yaw
     quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw_angle)
 
@@ -145,9 +145,12 @@ class MoveGroupPythonIntefaceTutorial(object):
   def plan_goal(self,x,y,z,yaw=0):
     move_group = self.move_group
 
+    # roll_angle = 0
+    # pitch_angle = 1.5708
+    # yaw_angle = yaw
     roll_angle = 0
-    pitch_angle = 1.5708
-    yaw_angle = yaw
+    pitch_angle = 3.14
+    yaw_angle = 0
     quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw_angle)
 
     pose_goal = geometry_msgs.msg.Pose()
@@ -182,9 +185,10 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     waypoints = []
     spot_a = copy.deepcopy(end_pose)
-    spot_a.position.z = 0.3
+    spot_a.position.z +=0.40 # change: relative to obj depth
 
-    q = quaternion_from_euler(0, 1.5708, end_pose.orientation.w-1.5708) #RPY
+    # change: pitch is 3.14 instead of 1.57 why?
+    q = quaternion_from_euler(0, 3.14, end_pose.orientation.w) #RPY
     spot_a.orientation.x = q[0]
     spot_a.orientation.y = q[1]
     spot_a.orientation.z = q[2]
@@ -192,9 +196,9 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     waypoints.append(copy.deepcopy(spot_a))
 
+    print(end_pose.position.z)
     end_pose.orientation = spot_a.orientation
-    end_pose.position.z +=0.1
-    # end_pose.position.z = 0.1
+    end_pose.position.z +=0.20 # change: relative to obj depth
 
     waypoints.append(copy.deepcopy(end_pose))
 
@@ -341,7 +345,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     scene = self.scene
 
     box_pose = geometry_msgs.msg.PoseStamped()
-    box_pose.header.frame_id = "world"
+    box_pose.header.frame_id = "base_link"
 
     box_pose.pose.orientation.w = 1.0
     box_pose.pose.position.x = args[0]
@@ -359,13 +363,13 @@ class MoveGroupPythonIntefaceTutorial(object):
     scene = self.scene
 
     wall1_pose = geometry_msgs.msg.PoseStamped()
-    wall1_pose.header.frame_id = "world"
+    wall1_pose.header.frame_id = "base_link"
 
     wall2_pose = geometry_msgs.msg.PoseStamped()
-    wall2_pose.header.frame_id = "world"
+    wall2_pose.header.frame_id = "base_link"
 
     box_pose = geometry_msgs.msg.PoseStamped()
-    box_pose.header.frame_id = "world"
+    box_pose.header.frame_id = "base_link"
 
     wall1_pose.pose.orientation.w = 1.0
     wall1_pose.pose.position.x = -0.25
@@ -435,7 +439,7 @@ class MoveGroupPythonIntefaceTutorial(object):
   def transf_pose_arr(self,pose_arr,listener):
     tf_pose_array = []
     pose = PoseStamped()
-    pose.header.frame_id = "camera_depth_optical_frame"
+    pose.header.frame_id = "camera_depth_frame"
 
     for p in pose_arr.poses:
       pose.pose = p
@@ -498,7 +502,7 @@ if __name__ == '__main__':
   # TODO: move into class
   # Initialization
   zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
-  observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.2754254250487067]
+  observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.1404254250487067]
 
   tutorial = MoveGroupPythonIntefaceTutorial()
   tutorial.detach_box()
@@ -506,7 +510,7 @@ if __name__ == '__main__':
 
   print("============ Press `Enter` to move to zero position (joint state goal) ...")
   input()
-  tutorial.go_to_joint_state(zero_goal)
+  # tutorial.go_to_joint_state(zero_goal)
 
   print("============ adding bounding box to the planning scene ...")
   tutorial.add_bbox()
@@ -517,9 +521,27 @@ if __name__ == '__main__':
   rospy.wait_for_service('/get_obj_clr')
   obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
 
-  rospy.Subscriber("object_colour", String, trigger_pick_and_place)
+  # rospy.Subscriber("object_colour", String, trigger_pick_and_place)
 
   print("Ready to perform pick and place.")
+  input()
+  # tutorial.go_to_pose_goal(0.2771494191599483,-0.1684270975009395,0.35190190868870065)
+  
+  pose_array = obj_srv("red")
+  print(pose_array)
+
+  poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
+
+  if poses_tf:
+    print(poses_tf)
+    target_pose = poses_tf[0]
+    target_pose.orientation.w = target_pose.orientation.w # keep orientation
+    print("TRANFORMED POSE IS {}".format(target_pose))
+    plan,_ = tutorial.plan_pick(target_pose)
+    tutorial.execute_plan(plan)
+
+
+                
 
   while not rospy.is_shutdown():
     try:
