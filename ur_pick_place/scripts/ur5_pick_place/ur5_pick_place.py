@@ -18,6 +18,8 @@ from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
 import tf
 from obj_detection.srv import GetObject
 from builtins import input
+from rochu_gripper_msgs.msg import GripperRequest, GripperMode, GripperState
+import time
 
 
 def all_close(goal, actual, tolerance):
@@ -58,6 +60,10 @@ class MoveGroupPythonIntefaceTutorial(object):
                                                    moveit_msgs.msg.DisplayTrajectory,
                                                    queue_size=20)
 
+    gripper_pub = rospy.Publisher('/rochu/request',
+                                                   GripperRequest,
+                                                   queue_size=10)
+
     model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
     get_all_models = rospy.ServiceProxy('gazebo/get_world_properties', GetWorldProperties)
 
@@ -87,6 +93,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.get_all_models = get_all_models
     self.sphere_img = []
     self.sphere_img_pose = PoseStamped().pose
+    self.gripper_pub = gripper_pub
 
     # get_all_models variable
     self.ignored_models = ['ground_plane','ConfTable','robot']
@@ -214,9 +221,16 @@ class MoveGroupPythonIntefaceTutorial(object):
     waypoints = []
     spot_a = move_group.get_current_pose().pose
     # spot_a = end_pose
-    spot_a.position.z = 0.5
+    spot_a.position.z +=0.30 # change: relative to obj depth
 
     waypoints.append(copy.deepcopy(spot_a))
+
+    q = quaternion_from_euler(0, 3.14, 1.5708) #RPY
+    end_pose.orientation.x = q[0]
+    end_pose.orientation.y = q[1]
+    end_pose.orientation.z = q[2]
+    end_pose.orientation.w = q[3]
+
     waypoints.append(copy.deepcopy(end_pose))
 
     (plan, fraction) = move_group.compute_cartesian_path(
@@ -373,7 +387,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     wall1_pose.pose.orientation.w = 1.0
     wall1_pose.pose.position.x = -0.25
-    wall1_pose.pose.position.y = -0.5
+    wall1_pose.pose.position.y = -0.8
     wall1_pose.pose.position.z = 0.5 # right wall
 
     wall2_pose.pose.orientation.w = 1.0
@@ -491,57 +505,162 @@ def trigger_pick_and_place(data):
   except Exception as e:
     print(e)
 
+class GripperController:
+  def __init__(self):
+    print("GripperController")
+    self.connected = False
+    self.g_mode = GripperMode()
+    self.c_mode = 1 #current mode
+    self.g_req = GripperRequest()
+    self.modes = {"grab":0,"idle":1,"release":2}
+    self.gripper_pub = rospy.Publisher('/rochu/request',
+                                                GripperRequest,
+                                                queue_size=10)
+    self.g_sub = rospy.Subscriber("/rochu/state", GripperState, self.state_callback)
+    
+    # self.gripper_client = actionlib.SimpleActionClient('/gripper_controller/gripper_cmd',GripperCommandAction)
+    # self.gripper_client.wait_for_server()
+    # self.result = -2
+  
+  def gripper_request(self,mode,effort):
+
+    if self.connected:
+      print("Sending {} request to gripper".format(mode))
+      self.g_mode.value = self.modes[mode]
+      self.g_req.name ="1"
+      self.g_req.effort = effort
+      self.g_req.request_mode = self.g_mode
+
+      self.gripper_pub.publish(self.g_req)
+      time.sleep(1)
+      print("Gripper now in {} mode".format(mode))
+      return True
+    else:
+      print("gripper not connected: failed to send request".format(mode))
+      return False
+  
+  def state_callback(self,data):
+    self.connected = data.connected
+    self.c_mode = data.current_mode.value
+
+  def gripper_state(self):
+    return self.connected, self.c_mode
 
 if __name__ == '__main__':
 
   rospy.init_node('move_group_python_interface_tutorial', anonymous=True)
 
-  listener = tf.TransformListener()
-  listener.waitForTransform("/base_link", "/camera_link", rospy.Time(0),rospy.Duration(4.0))
+  # listener = tf.TransformListener()
+  # listener.waitForTransform("/base_link", "/camera_link", rospy.Time(0),rospy.Duration(4.0))
 
-  # TODO: move into class
-  # Initialization
-  zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
-  observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.1404254250487067]
+  # g_mode = GripperMode()
+  # g_req = GripperRequest()
 
-  tutorial = MoveGroupPythonIntefaceTutorial()
-  tutorial.detach_box()
-  tutorial.remove_box()
+  # # TODO: move into class
+  # # Initialization
+  # zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
+  # observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.1404254250487067]
 
-  print("============ Press `Enter` to move to zero position (joint state goal) ...")
-  input()
-  # tutorial.go_to_joint_state(zero_goal)
+  # tutorial = MoveGroupPythonIntefaceTutorial()
+  # tutorial.detach_box()
+  # tutorial.remove_box()
 
-  print("============ adding bounding box to the planning scene ...")
-  tutorial.add_bbox()
+  # print("============ Press `Enter` to move to zero position (joint state goal) ...")
+  # input()
+  # # tutorial.go_to_joint_state(zero_goal)
 
-  tutorial.go_to_joint_state(observe_goal)
+  # print("============ adding bounding box to the planning scene ...")
+  # tutorial.add_bbox()
 
-  print("============ waiting for obj detect service ...")
-  rospy.wait_for_service('/get_obj_clr')
-  obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
+  # tutorial.go_to_joint_state(observe_goal)
 
-  # rospy.Subscriber("object_colour", String, trigger_pick_and_place)
+  # print("============ waiting for obj detect service ...")
+  # rospy.wait_for_service('/get_obj_clr')
+  # obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
 
-  print("Ready to perform pick and place.")
-  input()
-  # tutorial.go_to_pose_goal(0.2771494191599483,-0.1684270975009395,0.35190190868870065)
+  # # rospy.Subscriber("object_colour", String, trigger_pick_and_place)
+
+  # print("Ready to perform pick and place.")
+  # input()
+  # # tutorial.go_to_pose_goal(0.2771494191599483,-0.1684270975009395,0.35190190868870065)
   
-  pose_array = obj_srv("red")
-  print(pose_array)
+  # pose_array = obj_srv("red")
+  # print(pose_array)
 
-  poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
+  # poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
 
-  if poses_tf:
-    print(poses_tf)
-    target_pose = poses_tf[0]
-    target_pose.orientation.w = target_pose.orientation.w # keep orientation
-    print("TRANFORMED POSE IS {}".format(target_pose))
-    plan,_ = tutorial.plan_pick(target_pose)
-    tutorial.execute_plan(plan)
+  # # blue_place = tutorial.def_pose(0.035,-0.74,0.6,-0.6574,0.75354,0,0.250)
+  # blue_place = tutorial.def_pose(0.44,-0.35,0.65,-0.363,0.9316,0,0)
+  # red_place = tutorial.def_pose(0.86,-0.55,0.65,-0.363,0.9316,0,0)
 
 
-                
+  # if poses_tf:
+  #   print(poses_tf)
+  #   target_pose = poses_tf[0]
+  #   target_pose.orientation.w = target_pose.orientation.w # keep orientation
+  #   print("TRANFORMED POSE IS {}".format(target_pose))
+  #   plan,_ = tutorial.plan_pick(target_pose)
+  #   tutorial.execute_plan(plan)
+
+
+  #   g_mode.value = 0
+  #   g_req.name ="1"
+  #   g_req.effort=100
+  #   g_req.request_mode = g_mode
+
+  #   tutorial.gripper_pub.publish(g_req)
+
+  #   time.sleep(1)
+
+  #   # plan,_ = tutorial.plan_place(blue_place)
+  #   plan,_ = tutorial.plan_place(red_place)
+  #   tutorial.execute_plan(plan)
+
+  #   g_mode.value = 2
+  #   g_req.name ="1"
+  #   g_req.effort=0
+  #   g_req.request_mode = g_mode
+
+  #   tutorial.gripper_pub.publish(g_req)
+
+  gripper_controller = GripperController()
+  time.sleep(1)
+  conn,mode = gripper_controller.gripper_state()
+  print(conn)
+
+  if conn:
+    # gripper_controller.gripper_request("release",100)
+    # conn,mode = gripper_controller.gripper_state()
+    # print(mode)
+    # time.sleep(1)
+    gripper_controller.gripper_request("grab",100)
+    conn,mode = gripper_controller.gripper_state()
+    print(mode)
+    time.sleep(1)
+    # gripper_controller.gripper_request("idle",100)
+    # conn,mode = gripper_controller.gripper_state()
+    # print(mode)
+
+  # g_mode = GripperMode()
+  # g_req = GripperRequest()
+  
+  # time.sleep(1)
+
+  # g_mode.value = 0
+  # g_req.name ="1"
+  # g_req.effort=100
+  # g_req.request_mode = g_mode
+
+  # gripper_controller.gripper_pub.publish(g_req)
+
+  # time.sleep(1)
+
+  # g_mode.value = 2
+  # g_req.name ="1"
+  # g_req.effort=0
+  # g_req.request_mode = g_mode
+
+  # gripper_controller.gripper_pub.publish(g_req)
 
   while not rospy.is_shutdown():
     try:

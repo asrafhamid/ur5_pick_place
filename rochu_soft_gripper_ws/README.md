@@ -43,14 +43,14 @@ ros2 run ros1_bridge dynamic_bridge --print-pairs |grep rochu
 (make sure you have run the ```roscore```)
 
 ### Terminal 3:
-source devel/setup.bash - ros1_msg
+source devel/setup.bash - ros1_msg (cd to this workspace)
 ``` source ros1 workspace setup.bash```\
 1. Grab mode \
 ```
 rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
 request_mode:
   value: 0
-effort: 50" 
+effort: 100" 
 ```
 2. Release mode \
 ```
