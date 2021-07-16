@@ -1,5 +1,9 @@
 ## Setup docker container
 1. Install docker and setup the permission. You can refer to this [link](https://www.digitalocean.com/community/questions/how-to-fix-docker-got-permission-denied-while-trying-to-connect-to-the-docker-daemon-socket).
+
+/home/hopermf/asraf_ws/src/ur5_pick_place/rochu_soft_gripper_ws
+
+
 - Build docker image
 ```docker build -t rochu .```
 
@@ -64,5 +68,6 @@ effort: 0"
 rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
 request_mode:
   value: 1
-effort: 50" 
+effort: 100" 
 ```
+

@@ -112,10 +112,10 @@ class TriggerPickAndPlace(smach.State):
                 
                 poses_tf = self.move_grp.transf_pose_arr(data.poses,self.listener)
                 if poses_tf:
-                    print(poses_tf)
+                    # print(poses_tf)
                     target_pose = poses_tf[0]
-                    target_pose.orientation.w = target_pose.orientation.w # keep orientation
-                    print("TRANFORMED POSE IS {}".format(target_pose))
+                    # target_pose.orientation.w = target_pose.orientation.w # keep orientation
+                    # print("TRANFORMED POSE IS {}".format(target_pose))
                     userdata.target_pose = target_pose
                     userdata.color = clr
                     self.counter = 0
@@ -147,15 +147,33 @@ class PlanPick(smach.State):
                                     output_keys=['plan'])
         self.move_grp = move_grp
         self.pose = []
+        self.phase = 0
 
     def execute(self, userdata):
         rospy.loginfo('Executing state PlanPick')
+        curr_pose = self.move_grp.move_group.get_current_pose().pose
 
+        curr_pose.position.x = userdata.target_pose.position.x
+        curr_pose.position.y = userdata.target_pose.position.y
+        curr_pose.position.z = 0.8
+        curr_pose.orientation = userdata.target_pose.orientation
+
+        plan = None
+
+        print("phase in plan_pick: {}".format(self.phase))
         if userdata.target_pose:
-            plan, fraction = self.move_grp.plan_pick(userdata.target_pose)
-            p = userdata.target_pose
-            # p_orient = p.orientation.w
-            # print(p_orient)
+            if self.phase == 0:
+                self.phase = 1
+                plan = self.move_grp.plan_goal_pose(curr_pose)[1]
+            elif self.phase == 1:
+                self.phase = 0
+                print("issue here we come! {}".format(userdata.target_pose))
+                plan, fraction = self.move_grp.plan_pick(userdata.target_pose)
+                # plan = self.move_grp.plan_goal_pose(userdata.target_pose)[1]
+                
+            else:
+                print("invalid state!")
+                return 'waiting_state'
 
             if plan.joint_trajectory.points:
                 print("plan is succesfull!")
@@ -169,11 +187,14 @@ class PlanPick(smach.State):
 
 # define state PickRobotArm
 class PickRobotArm(smach.State):
-    def __init__(self,move_grp):
-        smach.State.__init__(self, outcomes=['pick_robot_arm_state','grab_gripper_state'],
-                                    input_keys=['target_pose','plan'],)
+    def __init__(self,move_grp,listener):
+        smach.State.__init__(self, outcomes=['pick_robot_arm_state','grab_gripper_state','plan_pick_state'],
+                                    input_keys=['target_pose','plan','color'],output_keys=['target_pose','color'])
+        self.obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
         self.move_grp = move_grp
         self.counter = 0
+        self.phase = 0
+        self.listener = listener
 
     def execute(self, userdata):
         rospy.loginfo('Executing state PickRobotArm')
@@ -182,8 +203,23 @@ class PickRobotArm(smach.State):
             plan = userdata.plan
             pick = self.move_grp.execute_plan(plan)
 
-        if pick:
-            return 'grab_gripper_state'
+        print("phase in pick_arm: {}".format(self.phase))
+        if pick :
+            if self.phase == 0:
+                self.phase = 1
+
+                data = self.obj_srv(userdata.color)
+                poses_tf = self.move_grp.transf_pose_arr(data.poses,self.listener)
+                if poses_tf:
+                    target_pose = poses_tf[0]
+                    userdata.target_pose = target_pose
+
+                return 'plan_pick_state'
+            elif self.phase == 1:
+                self.phase = 0
+                return 'grab_gripper_state'
+            else:
+                return 'pick_robot_arm_state'
         else:
             return 'pick_robot_arm_state'
 
@@ -212,7 +248,7 @@ class GrabGripper(smach.State):
 
 class ReleaseGripper(smach.State):
     def __init__(self,gripper_client):
-        smach.State.__init__(self, outcomes=['release_gripper_state','ending_state','observe_robot_arm_state'])
+        smach.State.__init__(self, outcomes=['release_gripper_state','ending_state'])
         self.trigger = True
         self.gripper_controller = gripper_client
         # self.init = True
@@ -358,9 +394,10 @@ def main():
                                transitions={'pick_robot_arm_state':'PickRobotArm',
                                'waiting_state':'PlanPick'})
 
-        smach.StateMachine.add('PickRobotArm', PickRobotArm(move_grp), 
+        smach.StateMachine.add('PickRobotArm', PickRobotArm(move_grp,listener), 
                                transitions={'grab_gripper_state':'GrabGripper',
-                               'pick_robot_arm_state':'PickRobotArm'})
+                               'pick_robot_arm_state':'PickRobotArm',
+                               'plan_pick_state':'PlanPick'})
 
         smach.StateMachine.add('GrabGripper', GrabGripper(gripper_controller), 
                                transitions={'plan_place_state':'PlanPlace',

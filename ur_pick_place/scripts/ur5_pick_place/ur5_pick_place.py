@@ -116,11 +116,13 @@ class MoveGroupPythonIntefaceTutorial(object):
     move_group = self.move_group
 
     roll_angle = 0
-    pitch_angle = 3.14
+    pitch_angle = 3.14 # HARCODED
     yaw_angle = yaw
     quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw_angle)
 
     pose_goal = geometry_msgs.msg.Pose()
+
+    
     pose_goal.orientation.x = quaternion[0]
     pose_goal.orientation.y = quaternion[1]
     pose_goal.orientation.z = quaternion[2]
@@ -146,7 +148,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     move_group.set_pose_target(pose_goal)
 
     ## Now, we call the planner to compute the plan and execute it.
-    plan = move_group.plan()
+    plan= move_group.plan()
     return plan 
 
   def plan_goal(self,x,y,z,yaw=0):
@@ -156,7 +158,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     # pitch_angle = 1.5708
     # yaw_angle = yaw
     roll_angle = 0
-    pitch_angle = 3.14
+    pitch_angle = 3.14 # HARCODED
     yaw_angle = 0
     quaternion = quaternion_from_euler(roll_angle, pitch_angle, yaw_angle)
 
@@ -192,20 +194,12 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     waypoints = []
     spot_a = copy.deepcopy(end_pose)
-    spot_a.position.z +=0.40 # change: relative to obj depth
-
-    # change: pitch is 3.14 instead of 1.57 why?
-    q = quaternion_from_euler(0, 3.14, end_pose.orientation.w) #RPY
-    spot_a.orientation.x = q[0]
-    spot_a.orientation.y = q[1]
-    spot_a.orientation.z = q[2]
-    spot_a.orientation.w = q[3]
+    spot_a.position.z +=0.40 # change: relative to obj depth HARCODED
 
     waypoints.append(copy.deepcopy(spot_a))
 
     print(end_pose.position.z)
-    end_pose.orientation = spot_a.orientation
-    end_pose.position.z +=0.20 # change: relative to obj depth
+    end_pose.position.z +=0.18 # change: relative to obj depth HARCODED
 
     waypoints.append(copy.deepcopy(end_pose))
 
@@ -221,11 +215,11 @@ class MoveGroupPythonIntefaceTutorial(object):
     waypoints = []
     spot_a = move_group.get_current_pose().pose
     # spot_a = end_pose
-    spot_a.position.z +=0.30 # change: relative to obj depth
+    spot_a.position.z +=0.30 # change: relative to obj depth HARCODED
 
     waypoints.append(copy.deepcopy(spot_a))
 
-    q = quaternion_from_euler(0, 3.14, 1.5708) #RPY
+    q = quaternion_from_euler(0, 3.14, 1.5708) #RPY HARCODED
     end_pose.orientation.x = q[0]
     end_pose.orientation.y = q[1]
     end_pose.orientation.z = q[2]
@@ -454,14 +448,32 @@ class MoveGroupPythonIntefaceTutorial(object):
     tf_pose_array = []
     pose = PoseStamped()
     pose.header.frame_id = "camera_depth_frame"
+    pose.header.stamp = rospy.Time(0)
 
     for p in pose_arr.poses:
       pose.pose = p
-      tf_pose = listener.transformPose("base_link",pose)
-      tf_pose.pose.orientation.w = p.orientation.w 
+      # rot = quaternion_from_euler(0,0,pose.pose.orientation.w)
+      euler_before = euler_from_quaternion([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w])
+      rot = quaternion_from_euler(0,0,euler_before[2]+1.5708) # plus 1.5708 to align obj red axis to gripper red axis
+
+      pose.pose.orientation.x = rot[0]
+      pose.pose.orientation.y = rot[1]
+      pose.pose.orientation.z = rot[2]
+      pose.pose.orientation.w = rot[3]
+
+      # print(euler_before)
+
+
+      tf_pose = listener.transformPose("/base_link",pose)
+      # print(tf_pose)
+
+      
+      # tf_pose.pose.orientation.w = p.orientation.w
+
+
       tf_pose_array.append(tf_pose.pose)
 
-    print(tf_pose_array)
+    # print(tf_pose_array)
     return tf_pose_array
 
   def get_closest_coordinate(self,target_pose):
@@ -508,7 +520,7 @@ def trigger_pick_and_place(data):
 class GripperController:
   def __init__(self):
     print("GripperController")
-    self.connected = False
+    self.connected = True
     self.g_mode = GripperMode()
     self.c_mode = 1 #current mode
     self.g_req = GripperRequest()
@@ -517,6 +529,7 @@ class GripperController:
                                                 GripperRequest,
                                                 queue_size=10)
     self.g_sub = rospy.Subscriber("/rochu/state", GripperState, self.state_callback)
+    self.timeout = 2
     
     # self.gripper_client = actionlib.SimpleActionClient('/gripper_controller/gripper_cmd',GripperCommandAction)
     # self.gripper_client.wait_for_server()
@@ -532,7 +545,7 @@ class GripperController:
       self.g_req.request_mode = self.g_mode
 
       self.gripper_pub.publish(self.g_req)
-      time.sleep(1)
+      time.sleep(self.timeout) #time to perform request
       print("Gripper now in {} mode".format(mode))
       return True
     else:
@@ -550,117 +563,85 @@ if __name__ == '__main__':
 
   rospy.init_node('move_group_python_interface_tutorial', anonymous=True)
 
-  # listener = tf.TransformListener()
-  # listener.waitForTransform("/base_link", "/camera_link", rospy.Time(0),rospy.Duration(4.0))
+  listener = tf.TransformListener()
+  listener.waitForTransform("/base_link", "/camera_link", rospy.Time(0),rospy.Duration(4.0))
 
-  # g_mode = GripperMode()
-  # g_req = GripperRequest()
+  g_mode = GripperMode()
+  g_req = GripperRequest()
 
-  # # TODO: move into class
-  # # Initialization
-  # zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
-  # observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.1404254250487067]
+  # TODO: move into class
+  # Initialization
+  zero_goal = [0, -pi/2, 0, -pi/2, 0, 0]
+  observe_goal = [-0.27640452940659355, -1.5613947841166143, 0.8086120509001136, -0.8173772811698496, -1.5702185440399328, -0.1404254250487067]
+  # observe_goal = [-0.5384119192706507, -1.679408375416891, 1.2045960426330566, -1.09497577348818, -1.5703643004046839, -0.4024561087237757]
 
-  # tutorial = MoveGroupPythonIntefaceTutorial()
-  # tutorial.detach_box()
-  # tutorial.remove_box()
 
-  # print("============ Press `Enter` to move to zero position (joint state goal) ...")
-  # input()
-  # # tutorial.go_to_joint_state(zero_goal)
+  tutorial = MoveGroupPythonIntefaceTutorial()
+  tutorial.detach_box()
+  tutorial.remove_box()
 
-  # print("============ adding bounding box to the planning scene ...")
-  # tutorial.add_bbox()
+  print("============ Press `Enter` to move to zero position (joint state goal) ...")
+  input()
+  # tutorial.go_to_joint_state(zero_goal)
 
-  # tutorial.go_to_joint_state(observe_goal)
+  print("============ adding bounding box to the planning scene ...")
+  tutorial.add_bbox()
 
-  # print("============ waiting for obj detect service ...")
-  # rospy.wait_for_service('/get_obj_clr')
-  # obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
+  tutorial.go_to_joint_state(observe_goal)
 
-  # # rospy.Subscriber("object_colour", String, trigger_pick_and_place)
+  print("============ waiting for obj detect service ...")
+  rospy.wait_for_service('/get_obj_clr')
+  obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
 
-  # print("Ready to perform pick and place.")
-  # input()
-  # # tutorial.go_to_pose_goal(0.2771494191599483,-0.1684270975009395,0.35190190868870065)
+  # rospy.Subscriber("object_colour", String, trigger_pick_and_place)
+
+  print("Ready to perform pick and place.")
+  input()
+  # tutorial.go_to_pose_goal(0.2771494191599483,-0.1684270975009395,0.35190190868870065)
   
-  # pose_array = obj_srv("red")
-  # print(pose_array)
-
-  # poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
 
   # # blue_place = tutorial.def_pose(0.035,-0.74,0.6,-0.6574,0.75354,0,0.250)
-  # blue_place = tutorial.def_pose(0.44,-0.35,0.65,-0.363,0.9316,0,0)
-  # red_place = tutorial.def_pose(0.86,-0.55,0.65,-0.363,0.9316,0,0)
+  blue_place = tutorial.def_pose(0.44,-0.35,0.65,-0.363,0.9316,0,0)
+  red_place = tutorial.def_pose(0.86,-0.55,0.65,-0.363,0.9316,0,0)
 
+  # print(pose_array)
+  pose_array = obj_srv("red")
+  poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
+  curr_pose = tutorial.move_group.get_current_pose().pose
 
-  # if poses_tf:
-  #   print(poses_tf)
-  #   target_pose = poses_tf[0]
-  #   target_pose.orientation.w = target_pose.orientation.w # keep orientation
+  if poses_tf:
+    print(poses_tf)
+    target_pose = poses_tf[0]
+
+    # curr_pose.position.x = target_pose.position.x
+    # curr_pose.position.y = target_pose.position.y
+    curr_pose.position = target_pose.position
+    curr_pose.orientation = target_pose.orientation
+    curr_pose.position.z = 0.8
+
+    plan = tutorial.plan_goal_pose(curr_pose)
+    tutorial.execute_plan(plan[1])
+  #   # target_pose.orientation.w = target_pose.orientation.w # keep orientation
   #   print("TRANFORMED POSE IS {}".format(target_pose))
-  #   plan,_ = tutorial.plan_pick(target_pose)
-  #   tutorial.execute_plan(plan)
+
+  #   spot_a_rot = euler_from_quaternion([spot_a.orientation.x,spot_a.orientation.y,spot_a.orientation.z,spot_a.orientation.w])
+
+  #   print(spot_a_rot[2]+target_pose.orientation.w)
+    # tutorial.go_to_pose_goal(target_pose.position.x,target_pose.position.y,0.8)
+
+  pose_array = obj_srv("red")
+
+  print(pose_array)
+  poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
+
+  if poses_tf:
+    # print(poses_tf)
+    target_pose = poses_tf[0]
+
+    plan,_ = tutorial.plan_pick(target_pose)
+    tutorial.execute_plan(plan)
 
 
-  #   g_mode.value = 0
-  #   g_req.name ="1"
-  #   g_req.effort=100
-  #   g_req.request_mode = g_mode
-
-  #   tutorial.gripper_pub.publish(g_req)
-
-  #   time.sleep(1)
-
-  #   # plan,_ = tutorial.plan_place(blue_place)
-  #   plan,_ = tutorial.plan_place(red_place)
-  #   tutorial.execute_plan(plan)
-
-  #   g_mode.value = 2
-  #   g_req.name ="1"
-  #   g_req.effort=0
-  #   g_req.request_mode = g_mode
-
-  #   tutorial.gripper_pub.publish(g_req)
-
-  gripper_controller = GripperController()
-  time.sleep(1)
-  conn,mode = gripper_controller.gripper_state()
-  print(conn)
-
-  if conn:
-    # gripper_controller.gripper_request("release",100)
-    # conn,mode = gripper_controller.gripper_state()
-    # print(mode)
-    # time.sleep(1)
-    gripper_controller.gripper_request("grab",100)
-    conn,mode = gripper_controller.gripper_state()
-    print(mode)
-    time.sleep(1)
-    # gripper_controller.gripper_request("idle",100)
-    # conn,mode = gripper_controller.gripper_state()
-    # print(mode)
-
-  # g_mode = GripperMode()
-  # g_req = GripperRequest()
-  
-  # time.sleep(1)
-
-  # g_mode.value = 0
-  # g_req.name ="1"
-  # g_req.effort=100
-  # g_req.request_mode = g_mode
-
-  # gripper_controller.gripper_pub.publish(g_req)
-
-  # time.sleep(1)
-
-  # g_mode.value = 2
-  # g_req.name ="1"
-  # g_req.effort=0
-  # g_req.request_mode = g_mode
-
-  # gripper_controller.gripper_pub.publish(g_req)
 
   while not rospy.is_shutdown():
     try:
