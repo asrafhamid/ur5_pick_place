@@ -160,14 +160,14 @@ class PlanPick(smach.State):
 
         plan = None
 
-        print("phase in plan_pick: {}".format(self.phase))
+        # print("phase in plan_pick: {}".format(self.phase))
         if userdata.target_pose:
             if self.phase == 0:
                 self.phase = 1
                 plan = self.move_grp.plan_goal_pose(curr_pose)[1]
             elif self.phase == 1:
                 self.phase = 0
-                print("issue here we come! {}".format(userdata.target_pose))
+                # print("issue here we come! {}".format(userdata.target_pose))
                 plan, fraction = self.move_grp.plan_pick(userdata.target_pose)
                 # plan = self.move_grp.plan_goal_pose(userdata.target_pose)[1]
                 
@@ -313,43 +313,6 @@ class PlaceRobotArm(smach.State):
             return 'release_gripper_state'
         else:
             return 'place_robot_arm_state'
-
-# class GripperController:
-#     def __init__(self):
-#         print("GripperController")
-#         self.connected = False
-#         self.g_mode = GripperMode()
-#         self.c_mode = 1 #current mode
-#         self.g_req = GripperRequest()
-#         self.modes = {"grap":0,"idle":1,"release":2}
-#         self.gripper_pub = rospy.Publisher('/rochu/request',
-#                                                    GripperRequest,
-#                                                    queue_size=10)
-#         self.g_sub = rospy.Subscriber("/rochu/state", GripperState, self.state_callback)
-    
-#     def gripper_request(self,mode,effort):
-
-#         if self.connected:
-#             rospy.loginfo("Sending {} request to gripper".format(mode))
-#             self.g_mode.value = self.modes[mode]
-#             self.g_req.name ="1"
-#             self.g_req.effort = effort
-#             self.g_req.request_mode = self.g_mode
-
-#             self.gripper_pub.publish(self.g_req)
-#             time.sleep(1)
-#             rospy.loginfo("Gripper now in {} mode".format(self.c_mode))
-#             return True
-#         else:
-#             rospy.loginfo("Gripper not connected: failed to send request".format(mode))
-#             return False
-    
-#     def state_callback(self,data):
-#         self.connected = data.connected
-#         self.c_mode = data.current_mode.value
-
-#     def gripper_state(self):
-#         return self.connected, self.c_mode
         
 
 def main():
