@@ -194,13 +194,9 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     waypoints = []
     spot_a = copy.deepcopy(end_pose)
-    spot_a.position.z +=0.40 # change: relative to obj depth HARCODED
+    spot_a.position.z +=0.30 # change: relative to obj depth HARCODED
 
     waypoints.append(copy.deepcopy(spot_a))
-
-    print(end_pose.position.z)
-    end_pose.position.z +=0.18 # change: relative to obj depth HARCODED
-
     waypoints.append(copy.deepcopy(end_pose))
 
     (plan, fraction) = move_group.compute_cartesian_path(
@@ -454,7 +450,7 @@ class MoveGroupPythonIntefaceTutorial(object):
       pose.pose = p
       # rot = quaternion_from_euler(0,0,pose.pose.orientation.w)
       euler_before = euler_from_quaternion([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w])
-      rot = quaternion_from_euler(0,0,euler_before[2]+1.5708) # plus 1.5708 to align obj red axis to gripper red axis
+      rot = quaternion_from_euler(0,0,euler_before[2]-1.5708) # plus 1.5708 to align obj red axis to gripper red axis
 
       pose.pose.orientation.x = rot[0]
       pose.pose.orientation.y = rot[1]
@@ -604,42 +600,61 @@ if __name__ == '__main__':
   blue_place = tutorial.def_pose(0.44,-0.35,0.65,-0.363,0.9316,0,0)
   red_place = tutorial.def_pose(0.86,-0.55,0.65,-0.363,0.9316,0,0)
 
-  # print(pose_array)
   pose_array = obj_srv("red")
   poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
+  print(poses_tf)
   curr_pose = tutorial.move_group.get_current_pose().pose
 
   if poses_tf:
     print(poses_tf)
     target_pose = poses_tf[0]
 
-    # curr_pose.position.x = target_pose.position.x
-    # curr_pose.position.y = target_pose.position.y
-    curr_pose.position = target_pose.position
+    print('old obj z: {}'.format(target_pose.position.z))
+    target_pose.position.z +=0.3
+    print('new obj z {}'.format(target_pose.position.z))
+
+    # curr_pose = tutorial.get_current_pose().pose
+
+    curr_pose.position.x = target_pose.position.x
+    curr_pose.position.y = target_pose.position.y
+    curr_pose.position.y -= 0.1
     curr_pose.orientation = target_pose.orientation
-    curr_pose.position.z = 0.8
 
-    plan = tutorial.plan_goal_pose(curr_pose)
-    tutorial.execute_plan(plan[1])
-  #   # target_pose.orientation.w = target_pose.orientation.w # keep orientation
-  #   print("TRANFORMED POSE IS {}".format(target_pose))
 
-  #   spot_a_rot = euler_from_quaternion([spot_a.orientation.x,spot_a.orientation.y,spot_a.orientation.z,spot_a.orientation.w])
 
-  #   print(spot_a_rot[2]+target_pose.orientation.w)
-    # tutorial.go_to_pose_goal(target_pose.position.x,target_pose.position.y,0.8)
+    plan = tutorial.plan_goal_pose(curr_pose)[1]
+    tutorial.execute_plan(plan)
 
-  pose_array = obj_srv("red")
 
-  print(pose_array)
-  poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
-
-  if poses_tf:
-    # print(poses_tf)
-    target_pose = poses_tf[0]
 
     plan,_ = tutorial.plan_pick(target_pose)
     tutorial.execute_plan(plan)
+
+  #   curr_pose.position = target_pose.position
+  #   curr_pose.orientation = target_pose.orientation
+  #   curr_pose.position.z = 0.8
+
+  #   plan = tutorial.plan_goal_pose(curr_pose)
+  #   tutorial.execute_plan(plan[1])
+  # #   # target_pose.orientation.w = target_pose.orientation.w # keep orientation
+  # #   print("TRANFORMED POSE IS {}".format(target_pose))
+
+  # #   spot_a_rot = euler_from_quaternion([spot_a.orientation.x,spot_a.orientation.y,spot_a.orientation.z,spot_a.orientation.w])
+
+  # #   print(spot_a_rot[2]+target_pose.orientation.w)
+  #   # tutorial.go_to_pose_goal(target_pose.position.x,target_pose.position.y,0.8)
+
+  # pose_array = obj_srv("red")
+
+  # print(pose_array)
+  # poses_tf = tutorial.transf_pose_arr(pose_array.poses,listener)
+
+  # if poses_tf:
+  #   print(poses_tf)
+    # target_pose = poses_tf[0]
+
+    # plan,_ = tutorial.plan_pick(target_pose)
+    # tutorial.execute_plan(plan)
 
 
 

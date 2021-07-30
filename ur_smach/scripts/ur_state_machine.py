@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from numpy.core.fromnumeric import resize
+import copy
 import rospy
 import threading
 import smach
@@ -50,9 +51,9 @@ class InitRobotArm(smach.State):
         self.move_grp.remove_box()
 
         self.move_grp.add_bbox()
-        plan = self.move_grp.go_to_joint_state(self.zero_goal)
+        # plan = self.move_grp.go_to_joint_state(self.zero_goal)
         
-        if plan:
+        if True:
             return 'observe_robot_arm_state'
         else:
             return 'init_robot_arm_state'
@@ -77,11 +78,46 @@ class ObserveRobotArm(smach.State):
         else:
             return 'observe_robot_arm_state'
 
+# define state GetObjPos
+class GetObjPos(smach.State):
+    def __init__(self,move_grp,listener):
+        smach.State.__init__(self, outcomes=['trigger_pick_place_task','get_obj_pos','plan_pick_state'],
+                                    input_keys=['color'],
+                                    output_keys=['target_pose','color'])
+        self.move_grp = move_grp
+        self.listener = listener
+        self.all_clr =['red','blue']
+        self.obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
+        self.poses = None
+        self.poses_tf = []
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state GetObjPos')
+
+        if not userdata.color or userdata.color not in self.all_clr:
+            return 'trigger_pick_place_task'
+        
+        data = self.obj_srv(userdata.color)
+        poses_tf = self.move_grp.transf_pose_arr(data.poses,self.listener)
+
+        if poses_tf:
+            # print(poses_tf)
+            target_pose = poses_tf[0]
+            target_pose.position.z += 0.18 # HARDCODED GRIPPER HEIGHT 
+            userdata.target_pose = copy.deepcopy(target_pose)
+            # userdata.color = clr
+            return 'plan_pick_state'
+        else:
+            return 'get_obj_pos'
+
+        
 
 # define state TriggerPickAndPlace
 class TriggerPickAndPlace(smach.State):
     def __init__(self,move_grp,listener):
-        smach.State.__init__(self, outcomes=['plan_pick_state','trigger_pick_place_task','exit'],output_keys=['target_pose','color'])
+        smach.State.__init__(self, outcomes=['plan_pick_state','trigger_pick_place_task','exit'],
+                                    input_keys=['target_pose','color','phase_temp'],
+                                    output_keys=['target_pose','color'])
         self.obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
         self.move_grp = move_grp
         self.poses = None
@@ -114,9 +150,8 @@ class TriggerPickAndPlace(smach.State):
                 if poses_tf:
                     # print(poses_tf)
                     target_pose = poses_tf[0]
-                    # target_pose.orientation.w = target_pose.orientation.w # keep orientation
-                    # print("TRANFORMED POSE IS {}".format(target_pose))
-                    userdata.target_pose = target_pose
+                    target_pose.position.z += 0.18 # HARDCODED GRIPPER HEIGHT 
+                    userdata.target_pose = copy.deepcopy(target_pose)
                     userdata.color = clr
                     self.counter = 0
                     return 'plan_pick_state'
@@ -143,34 +178,32 @@ class TriggerPickAndPlace(smach.State):
 class PlanPick(smach.State):
     def __init__(self,move_grp):
         smach.State.__init__(self, outcomes=['pick_robot_arm_state','waiting_state'],
-                                    input_keys=['target_pose','plan'],
-                                    output_keys=['plan'])
+                                    input_keys=['target_pose','plan','phase_temp'],
+                                    output_keys=['plan','target_pose','phase_temp'])
         self.move_grp = move_grp
         self.pose = []
-        self.phase = 0
 
     def execute(self, userdata):
         rospy.loginfo('Executing state PlanPick')
+        rospy.loginfo('target z is {}'.format(userdata.target_pose.position.z))
+
         curr_pose = self.move_grp.move_group.get_current_pose().pose
 
         curr_pose.position.x = userdata.target_pose.position.x
         curr_pose.position.y = userdata.target_pose.position.y
-        curr_pose.position.z = 0.8
         curr_pose.orientation = userdata.target_pose.orientation
+
+        if curr_pose.position.z > 0.18:
+            curr_pose.position.z -= 0.1
 
         plan = None
 
-        # print("phase in plan_pick: {}".format(self.phase))
         if userdata.target_pose:
-            if self.phase == 0:
-                self.phase = 1
+            
+            if userdata.phase_temp > 0:
                 plan = self.move_grp.plan_goal_pose(curr_pose)[1]
-            elif self.phase == 1:
-                self.phase = 0
-                # print("issue here we come! {}".format(userdata.target_pose))
+            elif userdata.phase_temp == 0:
                 plan, fraction = self.move_grp.plan_pick(userdata.target_pose)
-                # plan = self.move_grp.plan_goal_pose(userdata.target_pose)[1]
-                
             else:
                 print("invalid state!")
                 return 'waiting_state'
@@ -189,7 +222,7 @@ class PlanPick(smach.State):
 class PickRobotArm(smach.State):
     def __init__(self,move_grp,listener):
         smach.State.__init__(self, outcomes=['pick_robot_arm_state','grab_gripper_state','plan_pick_state'],
-                                    input_keys=['target_pose','plan','color'],output_keys=['target_pose','color'])
+                                    input_keys=['target_pose','plan','color','phase_temp','phase_fix'],output_keys=['target_pose','color','phase_temp'])
         self.obj_srv = rospy.ServiceProxy('/get_obj_clr', GetObject)
         self.move_grp = move_grp
         self.counter = 0
@@ -198,25 +231,28 @@ class PickRobotArm(smach.State):
 
     def execute(self, userdata):
         rospy.loginfo('Executing state PickRobotArm')
+        pick = False
 
         if userdata.target_pose:
             plan = userdata.plan
             pick = self.move_grp.execute_plan(plan)
 
-        print("phase in pick_arm: {}".format(self.phase))
+        print("pick_arm in phase: {}".format(userdata.phase_temp))
         if pick :
-            if self.phase == 0:
-                self.phase = 1
-
+            if  userdata.phase_temp > 0:
+                userdata.phase_temp -= 1
+                 
+                # get obj position again after moving arm
                 data = self.obj_srv(userdata.color)
                 poses_tf = self.move_grp.transf_pose_arr(data.poses,self.listener)
                 if poses_tf:
                     target_pose = poses_tf[0]
-                    userdata.target_pose = target_pose
+                    target_pose.position.z += 0.18 # HARDCODED GRIPPER HEIGHT 
+                    userdata.target_pose = copy.deepcopy(target_pose)
 
                 return 'plan_pick_state'
-            elif self.phase == 1:
-                self.phase = 0
+            elif userdata.phase_temp == 0:
+                userdata.phase_temp = userdata.phase_fix # reset
                 return 'grab_gripper_state'
             else:
                 return 'pick_robot_arm_state'
@@ -279,8 +315,6 @@ class PlanPlace(smach.State):
 
         if userdata.color!="na":
             place_pose = userdata.place_poses[userdata.color]
-            # place_pose = userdata.place_poses["blue"]
-            # print(place_pose)
             plan,fraction = self.move_grp.plan_place(place_pose)
 
             if plan.joint_trajectory.points:
@@ -328,6 +362,8 @@ def main():
     sm.userdata.color = "na"
     sm.userdata.target_pose = None
     sm.userdata.plan = None 
+    sm.userdata.phase_fix = 2
+    sm.userdata.phase_temp = sm.userdata.phase_fix
 
     blue_place = move_grp.def_pose(0.44,-0.35,0.65,0.5,0.5,-0.5,0.5)
     red_place = move_grp.def_pose(0.86,-0.55,0.65,-0.5,0.5,0.5,0.5)

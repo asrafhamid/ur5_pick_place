@@ -58,11 +58,11 @@ effort: 100"
 ```
 2. Release mode \
 ```
-rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
+
+```rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
 request_mode:
   value: 2
 effort: 0" 
-```
 3. Idle mode \
 ```
 rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
