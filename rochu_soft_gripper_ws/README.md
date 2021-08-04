@@ -40,15 +40,27 @@ ros2 run ros1_bridge dynamic_bridge --print-pairs |grep rochu
 ```
 
 ### Terminal 1:
-```ros2 run rochu_gripper rochu_gripper_node ```
+```
+ros2 run rochu_gripper rochu_gripper_node 
+```
 
 ### Terminal 2:
-```ros2 run ros1_bridge dynamic_bridge``` \
-(make sure you have run the ```roscore```)
+```
+ros2 run ros1_bridge dynamic_bridge
+``` 
+
+(make sure you have run roscore)\
+ ```
+roscore
+```
 
 ### Terminal 3:
 source devel/setup.bash - ros1_msg (cd to this workspace)
-``` source ros1 workspace setup.bash```\
+
+```
+source ros1 workspace setup.bash
+```
+
 1. Grab mode \
 ```
 rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
@@ -57,12 +69,14 @@ request_mode:
 effort: 100" 
 ```
 2. Release mode \
-```
 
-```rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
+```
+rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
 request_mode:
   value: 2
 effort: 0" 
+```
+
 3. Idle mode \
 ```
 rostopic pub --once /rochu/request rochu_gripper_msgs/GripperRequest "name: '1'
